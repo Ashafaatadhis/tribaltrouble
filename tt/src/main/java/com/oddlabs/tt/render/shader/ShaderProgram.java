@@ -112,8 +112,13 @@ public abstract class ShaderProgram extends NativeResource<ShaderProgram.Program
     }
 
     private static int compileShader(int type, @NonNull String source) throws IllegalArgumentException {
+        var stage = type == GL20.GL_FRAGMENT_SHADER ? ShaderDialect.Stage.FRAGMENT
+                : type == GL20.GL_VERTEX_SHADER ? ShaderDialect.Stage.VERTEX
+                : ShaderDialect.Stage.GEOMETRY;
+        // No-op on desktop; converts to GLSL ES 3.20 when -Dcom.oddlabs.tt.gl.es=true.
+        String adapted = ShaderDialect.adapt(source, stage);
         int shaderId = GL20.glCreateShader(type);
-        GL20.glShaderSource(shaderId, source);
+        GL20.glShaderSource(shaderId, adapted);
         GL20.glCompileShader(shaderId);
 
         if (GL20.glGetShaderi(shaderId, GL20.GL_COMPILE_STATUS) == GL11.GL_FALSE) {

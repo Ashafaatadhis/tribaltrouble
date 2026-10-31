@@ -143,7 +143,7 @@ public final class PostProcessShader extends ShaderProgram {
                             finalColor = mix(finalColor, mask.rgb, 0.2);
                         } else {
                             // Border Detection (3-pixel thickness) with Despeckle
-                            vec2 texelSize = 1.0 / textureSize(u_maskTexture, 0);
+                            vec2 texelSize = 1.0 / vec2(textureSize(u_maskTexture, 0));
                             int maskCount = 0;
                             vec3 accumulatedColor = vec3(0.0);
 
