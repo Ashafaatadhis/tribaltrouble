@@ -29,10 +29,10 @@ final class AndroidKeys {
     private static final int GLFW_KEY_BACKSPACE = 259;
     private static final int GLFW_KEY_INSERT = 260;
     private static final int GLFW_KEY_DELETE = 261;
-    private static final int GLFW_KEY_RIGHT = 262;
-    private static final int GLFW_KEY_LEFT = 263;
-    private static final int GLFW_KEY_DOWN = 264;
-    private static final int GLFW_KEY_UP = 265;
+    static final int GLFW_KEY_RIGHT = 262;
+    static final int GLFW_KEY_LEFT = 263;
+    static final int GLFW_KEY_DOWN = 264;
+    static final int GLFW_KEY_UP = 265;
     private static final int GLFW_KEY_PAGE_UP = 266;
     private static final int GLFW_KEY_PAGE_DOWN = 267;
     private static final int GLFW_KEY_HOME = 268;

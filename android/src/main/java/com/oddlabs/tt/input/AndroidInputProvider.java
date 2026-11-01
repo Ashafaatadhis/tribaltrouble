@@ -21,6 +21,8 @@ public final class AndroidInputProvider implements InputProvider<Object> {
     private static final int BUTTON_LEFT = 0;
     private static final int WHEEL_STEP = 120;
     private static final float PINCH_PIXELS_PER_STEP = 48f;
+    private static final float PAN_START_PIXELS = 3f;
+    private static final long PAN_IDLE_NANOS = 150_000_000L;
 
     private final @NonNull AndroidWindow window;
 
@@ -38,6 +40,11 @@ public final class AndroidInputProvider implements InputProvider<Object> {
     private boolean pinching;
     private float lastPinchDistance;
     private float pinchRemainder;
+    private float lastCentroidX;
+    private float lastCentroidY;
+    private volatile long lastPanNanos;
+    private int heldHorizontalKey;
+    private int heldVerticalKey;
 
     private record QueuedKey(int key, boolean state, boolean repeat, int mods, char character) {
     }
@@ -60,6 +67,7 @@ public final class AndroidInputProvider implements InputProvider<Object> {
             case MotionEvent.ACTION_MOVE -> {
                 if (event.getPointerCount() >= 2) {
                     pinch(event);
+                    pan(event);
                 } else if (!pinching) {
                     moveTo(event.getX(), event.getY());
                 }
@@ -69,12 +77,16 @@ public final class AndroidInputProvider implements InputProvider<Object> {
                 pinching = true;
                 lastPinchDistance = pinchDistance(event);
                 pinchRemainder = 0;
+                lastCentroidX = (event.getX(0) + event.getX(1)) / 2;
+                lastCentroidY = (event.getY(0) + event.getY(1)) / 2;
             }
+            case MotionEvent.ACTION_POINTER_UP -> setPanKeys(0, 0);
             case MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (!pinching) {
                     moveTo(event.getX(), event.getY());
                 }
                 setLeft(false);
+                setPanKeys(0, 0);
                 pinching = false;
             }
             default -> {
@@ -118,6 +130,49 @@ public final class AndroidInputProvider implements InputProvider<Object> {
         }
     }
 
+    /**
+     * Dragging two fingers pans the camera by holding an arrow key, since that is how the camera takes panning. The
+     * world follows the fingers, so the camera moves the opposite way.
+     */
+    private void pan(MotionEvent event) {
+        float centroidX = (event.getX(0) + event.getX(1)) / 2;
+        float centroidY = (event.getY(0) + event.getY(1)) / 2;
+        float dx = centroidX - lastCentroidX;
+        float dy = centroidY - lastCentroidY;
+        lastCentroidX = centroidX;
+        lastCentroidY = centroidY;
+        if (Math.abs(dx) >= PAN_START_PIXELS || Math.abs(dy) >= PAN_START_PIXELS) {
+            lastPanNanos = System.nanoTime();
+            setPanKeys(Math.abs(dx) < PAN_START_PIXELS ? 0 : dx > 0 ? AndroidKeys.GLFW_KEY_LEFT : AndroidKeys
+                    .GLFW_KEY_RIGHT, Math.abs(dy) < PAN_START_PIXELS ? 0 : dy > 0 ? AndroidKeys.GLFW_KEY_UP
+                            : AndroidKeys.GLFW_KEY_DOWN);
+        }
+    }
+
+    /** Holds the given arrow keys and releases the ones held before; 0 means no key on that axis. */
+    private void setPanKeys(int horizontal, int vertical) {
+        synchronized (keyEvents) {
+            switchPanKey(heldHorizontalKey, horizontal);
+            switchPanKey(heldVerticalKey, vertical);
+            heldHorizontalKey = horizontal;
+            heldVerticalKey = vertical;
+        }
+    }
+
+    private void switchPanKey(int held, int wanted) {
+        if (held == wanted) {
+            return;
+        }
+        if (held != 0) {
+            keysDown.remove(held);
+            keyEvents.add(new QueuedKey(held, false, false, 0, (char) 0));
+        }
+        if (wanted != 0) {
+            keysDown.add(wanted);
+            keyEvents.add(new QueuedKey(wanted, true, false, 0, (char) 0));
+        }
+    }
+
     /** {@return true if the key was translated and queued} */
     public boolean onKeyEvent(@NonNull KeyEvent event) {
         int key = AndroidKeys.toGlfw(event.getKeyCode());
@@ -150,8 +205,12 @@ public final class AndroidInputProvider implements InputProvider<Object> {
     public void close() {
     }
 
+    /** Lets go of the panning keys once the fingers stop moving, since no event arrives when they hold still. */
     @Override
     public void pollKeyboard() {
+        if ((heldHorizontalKey != 0 || heldVerticalKey != 0) && System.nanoTime() - lastPanNanos > PAN_IDLE_NANOS) {
+            setPanKeys(0, 0);
+        }
     }
 
     @Override
