@@ -12,6 +12,7 @@ final class S3tcDecoder {
     private static final int DXT5_BLOCK_BYTES = 16;
     private static final int ALPHA_BLOCK_BYTES = 8;
     private static final int RGBA_BYTES = 4;
+    private static final int PACKED_BYTES = 2;
     private static final int OPAQUE = 255;
 
     private S3tcDecoder() {
@@ -23,8 +24,29 @@ final class S3tcDecoder {
      * @return {@code width * height} pixels, four bytes each in red, green, blue, alpha order
      */
     static ByteBuffer decode(ByteBuffer blocks, int width, int height, boolean dxt5, boolean dxt1Alpha) {
+        return decode(blocks, width, height, dxt5, dxt1Alpha, Packing.RGBA8);
+    }
+
+    /** Output layouts. The 16-bit ones halve the memory of a decoded texture at some cost in colour precision. */
+    enum Packing {
+        RGBA8(RGBA_BYTES),
+        RGB565(PACKED_BYTES),
+        RGBA5551(PACKED_BYTES),
+        RGBA4444(PACKED_BYTES);
+
+        final int bytesPerPixel;
+
+        Packing(int bytesPerPixel) {
+            this.bytesPerPixel = bytesPerPixel;
+        }
+    }
+
+    /** @return {@code width * height} pixels in the given layout; 16-bit pixels are native-order shorts */
+    static ByteBuffer decode(ByteBuffer blocks, int width, int height, boolean dxt5, boolean dxt1Alpha,
+            Packing packing) {
         ByteBuffer in = blocks.duplicate().order(ByteOrder.LITTLE_ENDIAN);
-        ByteBuffer out = ByteBuffer.allocateDirect(width * height * RGBA_BYTES);
+        ByteBuffer out = ByteBuffer.allocateDirect(width * height * packing.bytesPerPixel)
+                .order(ByteOrder.nativeOrder());
         int blockBytes = dxt5 ? DXT5_BLOCK_BYTES : DXT1_BLOCK_BYTES;
         int blocksX = (width + BLOCK_SIZE - 1) / BLOCK_SIZE;
         int blocksY = (height + BLOCK_SIZE - 1) / BLOCK_SIZE;
@@ -45,11 +67,23 @@ final class S3tcDecoder {
                             int texel = py * BLOCK_SIZE + px;
                             int argb = colour[texel];
                             int a = dxt5 ? alpha[texel] : argb >>> 24;
-                            int o = (y * width + x) * RGBA_BYTES;
-                            out.put(o, (byte) (argb >> 16));
-                            out.put(o + 1, (byte) (argb >> 8));
-                            out.put(o + 2, (byte) argb);
-                            out.put(o + 3, (byte) a);
+                            int o = (y * width + x) * packing.bytesPerPixel;
+                            int r = (argb >> 16) & 0xFF;
+                            int g = (argb >> 8) & 0xFF;
+                            int b = argb & 0xFF;
+                            switch (packing) {
+                                case RGBA8 -> {
+                                    out.put(o, (byte) r);
+                                    out.put(o + 1, (byte) g);
+                                    out.put(o + 2, (byte) b);
+                                    out.put(o + 3, (byte) a);
+                                }
+                                case RGB565 -> out.putShort(o, (short) (((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3)));
+                                case RGBA5551 -> out.putShort(o,
+                                        (short) (((r >> 3) << 11) | ((g >> 3) << 6) | ((b >> 3) << 1) | (a >> 7)));
+                                case RGBA4444 -> out.putShort(o,
+                                        (short) (((r >> 4) << 12) | ((g >> 4) << 8) | ((b >> 4) << 4) | (a >> 4)));
+                            }
                         }
                     }
                 }

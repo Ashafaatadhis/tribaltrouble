@@ -463,8 +463,21 @@ public class GL11 {
         if (isS3tc(internalformat) && !GL.getCapabilities().GL_EXT_texture_compression_s3tc) {
             boolean dxt5 = internalformat == EXTTextureCompressionS3TC.GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
             boolean dxt1Alpha = internalformat == EXTTextureCompressionS3TC.GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
-            GLES20.glTexImage2D(target, level, GL_RGBA, width, height, border, GL_RGBA, GL_UNSIGNED_BYTE,
-                    S3tcDecoder.decode(data, width, height, dxt5, dxt1Alpha));
+            S3tcDecoder.Packing packing = dxt5
+                    ? S3tcDecoder.Packing.RGBA4444
+                    : dxt1Alpha ? S3tcDecoder.Packing.RGBA5551 : S3tcDecoder.Packing.RGB565;
+            int[] alignment = new int[1];
+            GLES20.glGetIntegerv(GLES20.GL_UNPACK_ALIGNMENT, alignment, 0);
+            GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, 2);
+            switch (packing) {
+                case RGB565 -> GLES20.glTexImage2D(target, level, GLES20.GL_RGB565, width, height, border, GL_RGB,
+                        GLES20.GL_UNSIGNED_SHORT_5_6_5, S3tcDecoder.decode(data, width, height, dxt5, dxt1Alpha, packing));
+                case RGBA5551 -> GLES20.glTexImage2D(target, level, GLES20.GL_RGB5_A1, width, height, border, GL_RGBA,
+                        GLES20.GL_UNSIGNED_SHORT_5_5_5_1, S3tcDecoder.decode(data, width, height, dxt5, dxt1Alpha, packing));
+                default -> GLES20.glTexImage2D(target, level, GLES20.GL_RGBA4, width, height, border, GL_RGBA,
+                        GLES20.GL_UNSIGNED_SHORT_4_4_4_4, S3tcDecoder.decode(data, width, height, dxt5, dxt1Alpha, packing));
+            }
+            GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, alignment[0]);
             return;
         }
         GLES20.glCompressedTexImage2D(target, level, internalformat, width, height, border, data.remaining(), data);
