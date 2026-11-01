@@ -51,6 +51,8 @@ import com.oddlabs.tt.viewer.AmbientAudio;
 import com.oddlabs.tt.viewer.Cheat;
 import com.oddlabs.tt.viewer.Selection;
 import com.oddlabs.tt.window.Window;
+import com.oddlabs.tt.window.WindowSystem;
+import com.oddlabs.tt.window.WindowSystems;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
@@ -99,9 +101,11 @@ public final class Renderer implements AutoCloseable {
     private boolean movie_recording_started = false;
     private AmbientAudio ambient;
 
-    private final Window window = new com.oddlabs.tt.window.LWJGL3Window();
+    private final WindowSystem windowSystem = WindowSystems.current();
 
-    private final LocalInput localInput = new LocalInput(window);
+    private final Window window = windowSystem.createWindow();
+
+    private final LocalInput localInput = new LocalInput(windowSystem.createInputProvider(window));
 
     private int display_width = -1;
     private int display_height = -1;

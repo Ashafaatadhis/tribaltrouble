@@ -123,6 +123,12 @@ public final class ScriptedInputProvider implements InputProvider<Long> {
         return delegate;
     }
 
+    @Override
+    public void init() {
+        delegate.init();
+    }
+
+    @Override
     public void setGuiRoot(@NonNull GUIRoot root) {
         this.root = root;
     }

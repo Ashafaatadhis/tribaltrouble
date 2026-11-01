@@ -70,7 +70,8 @@ public final class LWJGL3InputProvider implements InputProvider<Long> {
         this.window = win;
     }
 
-    public void initCallbacks() {
+    @Override
+    public void init() {
         this.windowHandle = window.getHandle();
         if (windowHandle == MemoryUtil.NULL) {
             throw new IllegalStateException("Window handle is NULL. Window might not be created yet.");

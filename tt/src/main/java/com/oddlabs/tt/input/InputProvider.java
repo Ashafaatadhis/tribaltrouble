@@ -1,8 +1,18 @@
 package com.oddlabs.tt.input;
 
+import com.oddlabs.tt.gui.GUIRoot;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 public interface InputProvider<C> extends AutoCloseable {
+    /** Called once the window exists, before the first poll. */
+    default void init() {
+    }
+
+    /** Lets providers that inspect the GUI, such as the scripted one, see the current root. */
+    default void setGuiRoot(@NonNull GUIRoot root) {
+    }
+
     // Keyboard
     void pollKeyboard();
 

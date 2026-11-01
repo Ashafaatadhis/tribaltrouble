@@ -5,6 +5,8 @@ import com.oddlabs.tt.event.LocalEventQueue;
 import com.oddlabs.tt.render.Renderer;
 import com.oddlabs.tt.steam.SteamManager;
 import com.oddlabs.tt.util.Utils;
+import com.oddlabs.tt.window.DesktopWindowSystem;
+import com.oddlabs.tt.window.WindowSystems;
 import org.jspecify.annotations.NonNull;
 import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
@@ -122,6 +124,7 @@ public final class Main {
 
     static void main(@NonNull String @NonNull... args) {
         int status = 1;
+        WindowSystems.install(new DesktopWindowSystem());
         try {
             SteamManager.init();
             logger.info("Starting game....");
