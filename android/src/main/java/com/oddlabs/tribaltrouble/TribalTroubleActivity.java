@@ -10,6 +10,7 @@ import android.view.WindowInsetsController;
 import com.oddlabs.tt.Main;
 import com.oddlabs.tt.input.AndroidInputProvider;
 import com.oddlabs.tt.render.Renderer;
+import com.oddlabs.tt.render.shader.ShaderDialect;
 import com.oddlabs.tt.window.AndroidWindow;
 import com.oddlabs.tt.window.AndroidWindowSystem;
 import com.oddlabs.tt.window.WindowSystems;
@@ -31,6 +32,7 @@ public final class TribalTroubleActivity extends Activity {
         view.setOnTouchListener((_, event) -> input.onTouchEvent(event));
 
         System.setProperty("user.home", getFilesDir().getAbsolutePath());
+        System.setProperty(ShaderDialect.ES_PROPERTY, "true");
         WindowSystems.install(new AndroidWindowSystem(window, input));
         engine = new Thread(this::runEngine, "engine");
         engine.start();

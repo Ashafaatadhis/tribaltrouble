@@ -15,12 +15,14 @@ import android.util.DisplayMetrics;
 import android.view.SurfaceHolder;
 import com.oddlabs.tt.global.Settings;
 import com.oddlabs.tt.render.SerializableDisplayMode;
+import com.oddlabs.tt.render.shader.ShaderDialect;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.opengl.GL;
 
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Logger;
 
 /**
  * Window over an Android surface. The engine loop blocks on its own thread, so this class owns the EGL context on
@@ -28,8 +30,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * only applied in {@link #pollEvents()}.
  */
 public final class AndroidWindow implements Window, SurfaceHolder.Callback {
+    private static final Logger logger = Logger.getLogger(AndroidWindow.class.getName());
     private static final int GL_ES_MAJOR_VERSION = 3;
-    private static final int GL_ES_MINOR_VERSION = 2;
+    /** The game needs only the OpenGL ES 3.0 baseline: it avoids geometry shaders and texture buffers. */
+    private static final String GLSL_ES_VERSION = "300";
     private static final int COLOR_BITS = 8;
     private static final int DEPTH_BITS = 24;
     private static final int DISPLAY_BITS_PER_PIXEL = 32;
@@ -122,26 +126,37 @@ public final class AndroidWindow implements Window, SurfaceHolder.Callback {
         }
 
         Settings settings = Settings.getSettings();
-        int samples = settings != null ? settings.view_samples : 0;
-        int[] configAttributes = {EGL14.EGL_RENDERABLE_TYPE, EGLExt.EGL_OPENGL_ES3_BIT_KHR, EGL14.EGL_RED_SIZE,
-                COLOR_BITS, EGL14.EGL_GREEN_SIZE, COLOR_BITS, EGL14.EGL_BLUE_SIZE, COLOR_BITS, EGL14.EGL_ALPHA_SIZE,
-                COLOR_BITS, EGL14.EGL_DEPTH_SIZE, DEPTH_BITS, EGL14.EGL_SAMPLE_BUFFERS, samples > 0 ? 1 : 0,
-                EGL14.EGL_SAMPLES, samples, EGL14.EGL_NONE};
-        EGLConfig[] configs = new EGLConfig[1];
-        int[] configCount = new int[1];
-        if (!EGL14.eglChooseConfig(eglDisplay, configAttributes, 0, configs, 0, 1, configCount, 0)
-                || configCount[0] == 0) {
-            throw new IllegalStateException("No EGL config with ES 3 and " + samples + " samples");
-        }
-        eglConfig = configs[0];
+        eglConfig = chooseConfig(settings != null ? settings.view_samples : 0);
 
-        int[] contextAttributes = {EGL14.EGL_CONTEXT_CLIENT_VERSION, GL_ES_MAJOR_VERSION,
-                EGLExt.EGL_CONTEXT_MINOR_VERSION_KHR, GL_ES_MINOR_VERSION, EGL14.EGL_NONE};
+        int[] contextAttributes = {EGL14.EGL_CONTEXT_CLIENT_VERSION, GL_ES_MAJOR_VERSION, EGL14.EGL_NONE};
         eglContext = EGL14.eglCreateContext(eglDisplay, eglConfig, EGL14.EGL_NO_CONTEXT, contextAttributes, 0);
+        System.setProperty(ShaderDialect.ES_VERSION_PROPERTY, GLSL_ES_VERSION);
         if (eglContext == EGL14.EGL_NO_CONTEXT) {
-            throw new IllegalStateException(
-                    "OpenGL ES " + GL_ES_MAJOR_VERSION + "." + GL_ES_MINOR_VERSION + " is not available: 0x"
-                            + Integer.toHexString(EGL14.eglGetError()));
+            throw new IllegalStateException("OpenGL ES " + GL_ES_MAJOR_VERSION + " is not available: 0x"
+                    + Integer.toHexString(EGL14.eglGetError()));
+        }
+    }
+
+    /** Asks for the wanted multisampling and halves it until the device has a matching config. */
+    private @NonNull EGLConfig chooseConfig(int wantedSamples) {
+        for (int samples = wantedSamples; ; samples /= 2) {
+            int[] configAttributes = {EGL14.EGL_RENDERABLE_TYPE, EGLExt.EGL_OPENGL_ES3_BIT_KHR, EGL14.EGL_RED_SIZE,
+                    COLOR_BITS, EGL14.EGL_GREEN_SIZE, COLOR_BITS, EGL14.EGL_BLUE_SIZE, COLOR_BITS,
+                    EGL14.EGL_ALPHA_SIZE, COLOR_BITS, EGL14.EGL_DEPTH_SIZE, DEPTH_BITS, EGL14.EGL_SAMPLE_BUFFERS,
+                    samples > 0 ? 1 : 0, EGL14.EGL_SAMPLES, samples, EGL14.EGL_NONE};
+            EGLConfig[] configs = new EGLConfig[1];
+            int[] configCount = new int[1];
+            if (EGL14.eglChooseConfig(eglDisplay, configAttributes, 0, configs, 0, 1, configCount, 0)
+                    && configCount[0] > 0) {
+                if (samples != wantedSamples) {
+                    logger.warning("No EGL config with " + wantedSamples + " samples, using " + samples);
+                }
+                return configs[0];
+            }
+            if (samples == 0) {
+                throw new IllegalStateException("No EGL config with OpenGL ES 3: 0x" + Integer.toHexString(
+                        EGL14.eglGetError()));
+            }
         }
     }
 

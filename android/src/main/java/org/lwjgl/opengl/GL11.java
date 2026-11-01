@@ -4,9 +4,11 @@ import android.opengl.GLES20;
 import android.opengl.GLES30;
 import android.opengl.GLES31;
 import android.opengl.GLES32;
+import com.oddlabs.tt.render.shader.ShaderDialect;
 
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
@@ -115,6 +117,7 @@ public class GL11 {
 
     public static final int GL_UNSIGNED_BYTE = GLES20.GL_UNSIGNED_BYTE;
     public static final int GL_UNSIGNED_SHORT = GLES20.GL_UNSIGNED_SHORT;
+    public static final int GL_UNSIGNED_INT = GLES20.GL_UNSIGNED_INT;
     public static final int GL_FLOAT = GLES20.GL_FLOAT;
     public static final int GL_HALF_FLOAT = GLES30.GL_HALF_FLOAT;
     public static final int GL_UNSIGNED_INT_8_8_8_8_REV = 0x8367;
@@ -330,8 +333,9 @@ public class GL11 {
         GLES20.glActiveTexture(texture);
     }
 
+    /** Texture buffers are emulated by 2D textures, so binding one binds that. */
     public static void glBindTexture(int target, int texture) {
-        GLES20.glBindTexture(target, texture);
+        GLES20.glBindTexture(target == GL_TEXTURE_BUFFER ? GL_TEXTURE_2D : target, texture);
     }
 
     public static int glGenTextures() {
@@ -360,23 +364,116 @@ public class GL11 {
         GLES20.glTexParameterf(target, pname, param);
     }
 
+    /** Ignores the border colour: it needs ES 3.2 and the game never clamps to the border. */
     public static void glTexParameterfv(int target, int pname, FloatBuffer params) {
-        GLES20.glTexParameterfv(target, pname, params);
+        if (pname != GL_TEXTURE_BORDER_COLOR) {
+            GLES20.glTexParameterfv(target, pname, params);
+        }
     }
 
+    /**
+     * Maps desktop-only combinations onto ones ES accepts: unsized "red" and generic compressed internal formats become
+     * sized ones, BGRA bytes are swizzled to RGBA, and RGBA bytes are narrowed when the texture is RGB.
+     */
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border,
             int format, int type, Buffer pixels) {
-        GLES20.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+        int internal = esInternalFormat(internalformat);
+        int uploadFormat = format;
+        int uploadType = type;
+        Buffer data = pixels;
+        if (internal == GL_R8 && (format == GL_LUMINANCE || format == GL_ALPHA)) {
+            uploadFormat = GL_RED;
+        }
+        if (pixels == null) {
+            uploadFormat = allocationFormat(internal, format);
+            uploadType = allocationType(internal, type);
+        }
+        if (pixels instanceof ByteBuffer bytes && type == GL_UNSIGNED_BYTE) {
+            boolean narrow = (internal == GL_RGB || internal == GL_RGB8) && (format == GL_RGBA || format == GL_BGRA);
+            if (format == GL_BGRA || narrow) {
+                data = repack(bytes, width * height, format == GL_BGRA, narrow ? 3 : 4);
+                uploadFormat = narrow ? GL_RGB : GL_RGBA;
+            }
+        }
+        GLES20.glTexImage2D(target, level, internal, width, height, border, uploadFormat, uploadType, data);
     }
 
     public static void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height,
             int format, int type, Buffer pixels) {
-        GLES20.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
+        int uploadFormat = format;
+        Buffer data = pixels;
+        if (format == GL_BGRA && pixels instanceof ByteBuffer bytes && type == GL_UNSIGNED_BYTE) {
+            data = repack(bytes, width * height, true, 4);
+            uploadFormat = GL_RGBA;
+        }
+        GLES20.glTexSubImage2D(target, level, xoffset, yoffset, width, height, uploadFormat, type, data);
     }
 
+    /** Empty storage still has to name a format and type that ES accepts for the internal format. */
+    private static int allocationFormat(int internal, int format) {
+        return switch (internal) {
+            case GL_R8, GL_R32F -> GL_RED;
+            case GL_RGB, GL_RGB8, GL_RGB32F -> GL_RGB;
+            case GL_RGBA, GL_RGBA8, GL_RGBA16F -> GL_RGBA;
+            case GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT32F -> GL_DEPTH_COMPONENT;
+            default -> format;
+        };
+    }
+
+    private static int allocationType(int internal, int type) {
+        return switch (internal) {
+            case GL_R8, GL_RGB, GL_RGB8, GL_RGBA, GL_RGBA8 -> GL_UNSIGNED_BYTE;
+            case GL_R32F, GL_RGB32F, GL_DEPTH_COMPONENT32F -> GL_FLOAT;
+            case GL_RGBA16F -> GL_HALF_FLOAT;
+            case GL_DEPTH_COMPONENT24 -> GL_UNSIGNED_INT;
+            default -> type;
+        };
+    }
+
+    private static int esInternalFormat(int internalformat) {
+        return switch (internalformat) {
+            case GL_RED, GL_COMPRESSED_LUMINANCE, GL_COMPRESSED_ALPHA -> GL_R8;
+            case GL_COMPRESSED_RGB -> GL_RGB8;
+            case GL_COMPRESSED_RGBA -> GL_RGBA8;
+            default -> internalformat;
+        };
+    }
+
+    /** Copies four-byte pixels into a direct buffer, optionally swapping red and blue and dropping alpha. */
+    private static ByteBuffer repack(ByteBuffer source, int pixels, boolean swapRedBlue, int outBytes) {
+        ByteBuffer in = source.duplicate();
+        ByteBuffer out = ByteBuffer.allocateDirect(pixels * outBytes);
+        for (int i = 0; i < pixels; i++) {
+            byte c0 = in.get();
+            byte c1 = in.get();
+            byte c2 = in.get();
+            byte alpha = in.get();
+            out.put(swapRedBlue ? c2 : c0).put(c1).put(swapRedBlue ? c0 : c2);
+            if (outBytes == 4) {
+                out.put(alpha);
+            }
+        }
+        out.flip();
+        return out;
+    }
+
+    /** Decodes S3TC data to RGBA on the CPU when the GPU lacks the extension, as most mobile GPUs do. */
     public static void glCompressedTexImage2D(int target, int level, int internalformat, int width, int height,
             int border, ByteBuffer data) {
+        if (isS3tc(internalformat) && !GL.getCapabilities().GL_EXT_texture_compression_s3tc) {
+            boolean dxt5 = internalformat == EXTTextureCompressionS3TC.GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+            boolean dxt1Alpha = internalformat == EXTTextureCompressionS3TC.GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
+            GLES20.glTexImage2D(target, level, GL_RGBA, width, height, border, GL_RGBA, GL_UNSIGNED_BYTE,
+                    S3tcDecoder.decode(data, width, height, dxt5, dxt1Alpha));
+            return;
+        }
         GLES20.glCompressedTexImage2D(target, level, internalformat, width, height, border, data.remaining(), data);
+    }
+
+    private static boolean isS3tc(int internalformat) {
+        return internalformat == EXTTextureCompressionS3TC.GL_COMPRESSED_RGB_S3TC_DXT1_EXT
+                || internalformat == EXTTextureCompressionS3TC.GL_COMPRESSED_RGBA_S3TC_DXT1_EXT
+                || internalformat == EXTTextureCompressionS3TC.GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
     }
 
     /** Not in ES. Read the texture back through a framebuffer and {@code glReadPixels} instead. */
@@ -439,7 +536,35 @@ public class GL11 {
 
     /** Needs the ES 3.2 texture buffer; {@code GL_RGB32F} is not a valid buffer format there, see the port notes. */
     public static void glTexBuffer(int target, int internalformat, int buffer) {
-        GLES32.glTexBuffer(target, internalformat, buffer);
+        emulateTexBuffer(buffer);
+    }
+
+    /**
+     * Copies the RGB32F contents of the buffer into the bound 2D texture, laid out in rows of
+     * {@code 1 << ShaderDialect.TEXTURE_BUFFER_ROW_BITS} texels, which the converted shaders index into. The copy is a
+     * snapshot, so later changes to the buffer are not seen.
+     */
+    private static void emulateTexBuffer(int buffer) {
+        int[] size = new int[1];
+        GLES20.glBindBuffer(GLES30.GL_COPY_READ_BUFFER, buffer);
+        GLES20.glGetBufferParameteriv(GLES30.GL_COPY_READ_BUFFER, GLES20.GL_BUFFER_SIZE, size, 0);
+        ByteBuffer mapped = (ByteBuffer) GLES30.glMapBufferRange(GLES30.GL_COPY_READ_BUFFER, 0, size[0],
+                GLES30.GL_MAP_READ_BIT);
+        int rowTexels = 1 << ShaderDialect.TEXTURE_BUFFER_ROW_BITS;
+        int texels = size[0] / (3 * Float.BYTES);
+        int rows = (texels + rowTexels - 1) / rowTexels;
+        ByteBuffer padded = ByteBuffer.allocateDirect(rows * rowTexels * 3 * Float.BYTES).order(ByteOrder.nativeOrder());
+        padded.put(mapped);
+        padded.flip();
+        GLES30.glUnmapBuffer(GLES30.GL_COPY_READ_BUFFER);
+        GLES20.glBindBuffer(GLES30.GL_COPY_READ_BUFFER, 0);
+
+        GLES20.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        GLES20.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        GLES20.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        GLES20.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        GLES20.glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        GLES20.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, rowTexels, rows, 0, GL_RGB, GL_FLOAT, padded);
     }
 
     // --- vertex arrays and attributes ---
@@ -478,6 +603,10 @@ public class GL11 {
 
     public static void glVertexAttribDivisor(int index, int divisor) {
         GLES30.glVertexAttribDivisor(index, divisor);
+    }
+
+    public static void glDrawArraysInstanced(int mode, int first, int count, int primcount) {
+        GLES30.glDrawArraysInstanced(mode, first, count, primcount);
     }
 
     public static void glDrawElementsInstanced(int mode, int count, int type, long indices, int primcount) {
@@ -603,7 +732,15 @@ public class GL11 {
     }
 
     public static void glProgramUniform1i(int program, int location, int v0) {
-        GLES31.glProgramUniform1i(program, location, v0);
+        if (GL.getCapabilities().OpenGL31) {
+            GLES31.glProgramUniform1i(program, location, v0);
+            return;
+        }
+        int[] current = new int[1];
+        GLES20.glGetIntegerv(GLES20.GL_CURRENT_PROGRAM, current, 0);
+        GLES20.glUseProgram(program);
+        GLES20.glUniform1i(location, v0);
+        GLES20.glUseProgram(current[0]);
     }
 
     // --- framebuffers ---
@@ -640,7 +777,12 @@ public class GL11 {
 
     // --- GL 4.0 ---
 
+    /** Below ES 3.2 there is one blend function for all draw buffers, so only the first buffer's is applied. */
     public static void glBlendFunci(int buf, int sfactor, int dfactor) {
-        GLES32.glBlendFunci(buf, sfactor, dfactor);
+        if (GL.getCapabilities().OpenGL32) {
+            GLES32.glBlendFunci(buf, sfactor, dfactor);
+        } else if (buf == 0) {
+            GLES20.glBlendFunc(sfactor, dfactor);
+        }
     }
 }

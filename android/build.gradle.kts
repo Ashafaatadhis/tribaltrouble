@@ -17,6 +17,7 @@ val buildInfoDir = layout.buildDirectory.dir("port/buildinfo")
 val desktopOnly = listOf(
     "module-info.java",
     "com/oddlabs/net/DeserializationFilter.java",
+    "com/oddlabs/util/JsonMappers.java",
     "com/oddlabs/tt/Main.java",
     "com/oddlabs/tt/bugreport/**",
     "com/oddlabs/tt/window/LWJGL3Window.java",
@@ -69,7 +70,7 @@ android {
 
     defaultConfig {
         applicationId = "com.oddlabs.tribaltrouble"
-        minSdk = 26
+        minSdk = 35
         targetSdk = 36
         versionCode = 1
         versionName = "2.2"
@@ -114,6 +115,7 @@ dependencies {
     implementation("org.jspecify:jspecify:1.0.0")
     implementation("org.joml:joml:1.10.8")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.18.3")
+    implementation("com.fasterxml.jackson.module:jackson-module-parameter-names:2.18.3")
     implementation("com.code-disaster.steamworks4j:steamworks4j:1.10.0")
     runtimeOnly(files(assetsJar))
 
