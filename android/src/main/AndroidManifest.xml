@@ -12,7 +12,8 @@
 
     <application
         android:allowBackup="false"
-        android:label="Tribal Trouble">
+        android:label="Tribal Trouble"
+        android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen">
         <activity
             android:name=".TribalTroubleActivity"
             android:configChanges="orientation|screenSize|keyboard|keyboardHidden|screenLayout|smallestScreenSize|density"
