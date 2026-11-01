@@ -14,6 +14,7 @@ import com.oddlabs.net.ARMIInterfaceMethods;
 import com.oddlabs.net.AbstractConnection;
 import com.oddlabs.net.Connection;
 import com.oddlabs.net.ConnectionInterface;
+import com.oddlabs.net.DeserializationFilter;
 import com.oddlabs.net.HostSequenceID;
 import com.oddlabs.net.IllegalARMIEventException;
 import com.oddlabs.net.NetworkSelector;
@@ -42,6 +43,9 @@ import java.util.ResourceBundle;
 import java.util.Set;
 
 public final class MatchmakingClient implements MatchmakingClientInterface, ConnectionInterface {
+    private static final DeserializationFilter SPECTATOR_FILTER = DeserializationFilter.of(
+            "com.oddlabs.**;" + "java.lang.*;java.net.*;" + "!*");
+
     private static final int STATE_NOT_CONNECTED = 1;
     private static final int STATE_AWAITING_OK = 2;
     private static final int STATE_LOGGED_IN = 4;
@@ -347,9 +351,7 @@ public final class MatchmakingClient implements MatchmakingClientInterface, Conn
         if (chat_gui_root == null || network == null) return;
         try {
             var bais = new java.io.ByteArrayInputStream(world_params_data);
-            var ois = new java.io.ObjectInputStream(bais);
-            ois.setObjectInputFilter(java.io.ObjectInputFilter.Config.createFilter(
-                    "com.oddlabs.**;" + "java.lang.*;java.net.*;" + "!*"));
+            var ois = SPECTATOR_FILTER.open(bais);
             var generator = (com.oddlabs.tt.resource.WorldGenerator) ois.readObject();
             var world_params = (com.oddlabs.tt.landscape.WorldParameters) ois.readObject();
             var player_slots = (PlayerSlot[]) ois.readObject();

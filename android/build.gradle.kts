@@ -16,6 +16,7 @@ val buildInfoDir = layout.buildDirectory.dir("port/buildinfo")
 // Desktop-only classes whose Android counterparts live in android/src/main/java.
 val desktopOnly = listOf(
     "module-info.java",
+    "com/oddlabs/net/DeserializationFilter.java",
     "com/oddlabs/tt/Main.java",
     "com/oddlabs/tt/bugreport/**",
     "com/oddlabs/tt/window/LWJGL3Window.java",
