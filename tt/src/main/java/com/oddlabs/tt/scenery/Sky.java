@@ -264,7 +264,8 @@ public final class Sky implements SceneRenderer, AutoCloseable {
         this.detail = detail;
         this.subdiv_axis = subdiv_axis;
         this.subdiv_height = subdiv_height;
-        this.color = tex_env_color[terrain.ordinal()].get(BufferUtils.createFloatBuffer(4)).rewind();
+        this.color = tex_env_color[terrain.ordinal()].get(BufferUtils.createFloatBuffer(4));
+        this.color.rewind();
         TextureGenerator clouds_desc = new GeneratorClouds(terrain);
         clouds = Resources.findResource(clouds_desc);
         moon = Resources.findResource(new TextureFile("/textures/models/moon", GL11.GL_RGBA, GL11.GL_LINEAR,

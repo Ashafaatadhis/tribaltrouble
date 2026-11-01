@@ -41,7 +41,8 @@ public final class PostProcessor implements AutoCloseable {
 
         float[] quadVertices = {-1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f
         };
-        FloatBuffer buffer = BufferUtils.createFloatBuffer(quadVertices.length).put(quadVertices).flip();
+        FloatBuffer buffer = BufferUtils.createFloatBuffer(quadVertices.length).put(quadVertices);
+        buffer.flip();
         this.quadVBO = new FloatVBO(GL15.GL_STATIC_DRAW, buffer);
 
         int posLoc = shader.getAttributeLocation(PostProcessShader.Attributes.POSITION);

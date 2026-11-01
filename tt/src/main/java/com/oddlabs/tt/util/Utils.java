@@ -41,11 +41,15 @@ public final class Utils {
     }
 
     public static @NonNull FloatBuffer toBuffer(float @NonNull [] floats) {
-        return BufferUtils.createFloatBuffer(floats.length).put(floats).rewind();
+        FloatBuffer buffer = BufferUtils.createFloatBuffer(floats.length).put(floats);
+        buffer.rewind();
+        return buffer;
     }
 
     public static @NonNull ShortBuffer toBuffer(short @NonNull [] shorts) {
-        return BufferUtils.createShortBuffer(shorts.length).put(shorts).rewind();
+        ShortBuffer buffer = BufferUtils.createShortBuffer(shorts.length).put(shorts);
+        buffer.rewind();
+        return buffer;
     }
 
     public static @NonNull ByteBuffer ioResourceToByteBuffer(@NonNull URL url) throws IOException {
