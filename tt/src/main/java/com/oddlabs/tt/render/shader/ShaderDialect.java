@@ -11,11 +11,11 @@ import java.util.regex.Pattern;
  * desktop behaviour is unchanged. When enabled it:
  *
  * <ul>
- *   <li>rewrites {@code #version 410 core} to {@code #version 320 es};
- *   <li>adds the {@code precision} statements that GLSL ES requires (a default float precision for
- *       fragment shaders, and a precision for every sampler type the shader uses);
- *   <li>rejects constructs that GLSL ES does not have (double precision types) with a clear error,
- *       instead of leaving the driver to report an obscure compile failure.
+ * <li>rewrites {@code #version 410 core} to {@code #version 320 es};
+ * <li>adds the {@code precision} statements that GLSL ES requires (a default float precision for
+ * fragment shaders, and a precision for every sampler type the shader uses);
+ * <li>rejects constructs that GLSL ES does not have (double precision types) with a clear error,
+ * instead of leaving the driver to report an obscure compile failure.
  * </ul>
  *
  * <p>Compiler error line numbers are offset by one when a precision line was inserted.
@@ -31,16 +31,14 @@ public final class ShaderDialect {
     }
 
     private static final Pattern ANY_VERSION = Pattern.compile("(?m)^[ \\t]*#version\\b.*$");
-    private static final Pattern DESKTOP_VERSION =
-            Pattern.compile("(?m)^[ \\t]*#version[ \\t]+410[ \\t]+core[ \\t]*$");
+    private static final Pattern DESKTOP_VERSION = Pattern.compile("(?m)^[ \\t]*#version[ \\t]+410[ \\t]+core[ \\t]*$");
     private static final Pattern COMMENTS = Pattern.compile("(?s)/\\*.*?\\*/|//[^\\n]*");
-    private static final Pattern DOUBLE_TYPES =
-            Pattern.compile("\\b(double|dvec[234]|dmat[234](x[234])?)\\b");
-    private static final String[] SAMPLER_TYPES = {
-        "sampler2D", "sampler2DShadow", "samplerBuffer", "sampler2DArray", "sampler3D", "samplerCube"
+    private static final Pattern DOUBLE_TYPES = Pattern.compile("\\b(double|dvec[234]|dmat[234](x[234])?)\\b");
+    private static final String[] SAMPLER_TYPES = {"sampler2D", "sampler2DShadow", "samplerBuffer", "sampler2DArray", "sampler3D", "samplerCube"
     };
 
-    private ShaderDialect() {}
+    private ShaderDialect() {
+    }
 
     public static boolean isEsEnabled() {
         return Boolean.getBoolean(ES_PROPERTY);
