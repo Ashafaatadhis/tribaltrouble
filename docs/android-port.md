@@ -30,10 +30,18 @@ The window and input code already sit behind interfaces, so the platform layer i
 
 ## OpenGL surface the client uses
 
-LWJGL 3.4.1 with a GLFW window and an OpenGL 4.1 core context. 102 files import LWJGL, but the
-client calls only about 96 distinct GL functions (GL11 up to GL41), which is small enough to
-re-implement over `android.opengl.GLES32`, keeping the `org.lwjgl.opengl.GL*` names so call sites
-do not change.
+LWJGL 3.4.1 with a GLFW window and an OpenGL 4.1 core context. 102 files import LWJGL, but only 40
+of them call GL, and they use 92 distinct GL functions (GL11 up to GL41) and 137 distinct `GL_*`
+constants. That is small enough to re-implement over `android.opengl.GLES32`, keeping the
+`org.lwjgl.opengl.GL*` names so call sites do not change. No file uses `import static` for GL, so
+every call goes through a class name such as `GL11.glBindTexture`.
+
+The counts come from a text search of `tt/src/main/java`, not from a compile. The most frequent
+calls are `glEnableVertexAttribArray` (30), `glVertexAttribPointer` (27), `glPixelStorei` (26),
+`glBindTexture` (20), `glActiveTexture` (15) and `glVertexAttribDivisor` (15). Besides GL the
+client uses GLFW (85 imports), OpenAL (61), `MemoryStack` and `MemoryUtil` (16), STB (5) and
+TinyFD (2). `LWJGL3Window` calls `GL.createCapabilities()` and `Renderer` reads `GL_VERSION`, which
+is where a shim would check the ES version.
 
 Functions or features with no direct GLES equivalent, or that need attention:
 
@@ -45,7 +53,12 @@ Functions or features with no direct GLES equivalent, or that need attention:
 | `glClearDepth` | `GLRenderContext` | ES has `glClearDepthf`. |
 | `glBindFragDataLocation` | `ShaderProgram` wrapper | Not in ES. The only callers are commented out and shaders use `layout(location)`. |
 | `GL_MULTISAMPLE` | `GLRenderContext` | Not valid in ES. MSAA needs a multisampled renderbuffer or an `EGL` config. |
-| `glTexBuffer`, `GL_TEXTURE_BUFFER`, `GL_RGB32F` | `SpriteList`, `InstancedSpriteRenderer` | Texture buffers are core in ES 3.2 only. Confirm `GL_RGB32F` is allowed for buffer textures on target devices. |
+| `GL_QUADS`, `GL_QUAD_STRIP` | `ShortVBO` | Only used to compute an index count, never drawn. Define the constants in the shim. |
+| `glGetTexLevelParameteriv` with `GL_TEXTURE_COMPRESSED`, `GL_TEXTURE_COMPRESSED_IMAGE_SIZE` | `Texture` | Used to compute texture sizes. Compute the size on the client instead. |
+| `glGetFramebufferAttachmentParameteri` with `GL_BACK_LEFT` | `Renderer` | Default-framebuffer colour depth check. ES uses `GL_BACK`. |
+| `glTexParameterfv` with `GL_TEXTURE_BORDER_COLOR` | `Texture` | Border colour is ES 3.2 only. |
+| `GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT` | `EXTTextureFilterAnisotropic` | Needs `EXT_texture_filter_anisotropic`. Check the extension at startup. |
+| `glTexBuffer`, `GL_TEXTURE_BUFFER`, `GL_RGB32F` | `SpriteList`, `InstancedSpriteRenderer` | Texture buffers are core in ES 3.2 only. `GL_RGB32F` does not appear to be a valid buffer-texture format in ES 3.2 (`R32F`, `RG32F` and `RGBA32F` are); check the spec and probably switch to `RGBA32F`. |
 | `glBlendFunci` | `PostProcessor` | Per-draw-buffer blend is ES 3.2. |
 | `GL_R32F`, `GL_RGBA16F` | `Texture`, `FBO`, `HeightMap` | Rendering to float formats needs float color-buffer support (ES 3.2 or `EXT_color_buffer_float`). Confirm on target devices. |
 | `GL_LUMINANCE`, `GL_ALPHA`, generic `GL_COMPRESSED_*`, `GL_BGRA` with `GL_UNSIGNED_INT_8_8_8_8_REV` | `GLImage`, `GLByteImage`, `Texture` | Legacy or desktop-only formats. Convert on the CPU or pick sized ES formats. |
