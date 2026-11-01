@@ -60,6 +60,30 @@ Target ES 3.2 first. It covers most rows above, and the app can check the versio
   Android toolchains support a much lower language level, so the client will need a Java level
   decision. The code uses `record` in about 57 files, `var` in about 117 and `switch` in about 98,
   and one `sealed` type. Check each against the level you choose.
+- Java level, measured in a throwaway spike (AGP 9.2.1, Gradle 9.4.1, JDK 26 running the build,
+  `compileSdk` 37, outside this repository):
+  - Gradle 9.4 to 9.6 run on JDK 26. AGP 9.2 needs Gradle 9.4.1, which is what the wrapper uses.
+  - AGP's bundled Kotlin rejects Java 26 (`Unknown Kotlin JVM target: 26`) and stops at 24, so
+    `compileOptions` has to say 24 or lower.
+  - `javac` can still run at `-source 25 -target 25` by overriding `sourceCompatibility` and
+    `targetCompatibility` on the `JavaCompile` tasks in `afterEvaluate`. D8 accepted class file
+    version 69, including a flexible constructor (statements before `super(...)`). The override is
+    a workaround and may break on a newer AGP.
+  - Level 25 is needed: `tt` uses flexible constructors in `KeyboardEvent`, `IconQuad`, `GUIImage`,
+    `Cursor` and `MapCamera`. Records, sealed types, pattern `switch` and unnamed variables (`_`)
+    all compile and dex.
+  - `java.io.IO` (Java 25) is not in `android.jar`. The 128 `IO.print*` calls in 32 files need
+    `System.out` or a shim.
+  - Other desktop-only APIs that failed to compile: `java.awt` and `java.awt.datatransfer`
+    (`EditLine`, `Menu`, `Settings`, `AccessibilityPanel`, `procedural/Layer`), `javax.imageio`
+    (`Layer`), `javax.sound.sampled` (`Wave`, `OpenALAudio`), `java.net.http` (`BugReporter`) and
+    `java.io.ObjectInputFilter` (`MatchmakingClient`, `DefaultARMIArgumentReader`). The
+    `ObjectInputFilter` files sit on the network path, so replacing them is a maintainer decision.
+  - `FloatBuffer.flip()` and `rewind()` return `Buffer` against `android.jar` (`Sky`,
+    `PostProcessor`, `Utils`), so those chains need a cast or a separate statement.
+  - Not measured: whether `tt` has further errors behind these (javac reports in stages), and
+    anything at runtime. The 101 `tt` files that import LWJGL were compiled against LWJGL on the
+    classpath, which is not an Android option.
 - Remove or replace desktop-only dependencies for Android: LWJGL natives, GLFW, TinyFD,
   Steamworks4j, and `java.awt` (3 files: `EditLine`, `Menu`, `procedural/Layer`).
 - `assets/` is the art source (about 254 MB) that Gradle tasks convert to the binary formats. Decide
