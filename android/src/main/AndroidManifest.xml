@@ -12,6 +12,7 @@
 
     <application
         android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
         android:label="Tribal Trouble"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen">
         <activity
