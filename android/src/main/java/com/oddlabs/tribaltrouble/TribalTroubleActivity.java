@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.text.InputType;
 import android.util.DisplayMetrics;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
@@ -31,6 +32,7 @@ import com.oddlabs.tt.window.WindowSystems;
 public final class TribalTroubleActivity extends Activity {
     private static final int MIN_SIDE_MARGIN_DP = 24;
     private static final int MIN_TOP_BOTTOM_MARGIN_DP = 6;
+    private static final int KEYBOARD_FIELD_CLEARANCE_DP = 48;
 
     /** The game surface, which also takes typed text from the on-screen keyboard and passes it to the engine. */
     private static final class GameSurfaceView extends SurfaceView {
@@ -99,6 +101,7 @@ public final class TribalTroubleActivity extends Activity {
     private AndroidWindow window;
     private AndroidInputProvider input;
     private Thread engine;
+    private float lastTouchY;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -118,7 +121,12 @@ public final class TribalTroubleActivity extends Activity {
         window = new AndroidWindow(this, view.getHolder(), metrics, getDisplay().getRefreshRate());
         input = new AndroidInputProvider(window);
         view.bind(input);
-        view.setOnTouchListener((_, event) -> input.onTouchEvent(event));
+        view.setOnTouchListener((_, event) -> {
+            if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                lastTouchY = event.getY();
+            }
+            return input.onTouchEvent(event);
+        });
         input.setKeyboardListener(wanted -> runOnUiThread(() -> setKeyboardVisible(wanted)));
         getOnBackInvokedDispatcher().registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT,
                 input::pressBack);
@@ -154,7 +162,12 @@ public final class TribalTroubleActivity extends Activity {
         int edgeMargin = Math.round(density * MIN_TOP_BOTTOM_MARGIN_DP);
         root.setPadding(Math.max(Math.max(cutout.left, gestures.left), sideMargin), Math.max(cutout.top, edgeMargin),
                 Math.max(Math.max(cutout.right, gestures.right), sideMargin),
-                Math.max(Math.max(cutout.bottom, keyboard.bottom), edgeMargin));
+                Math.max(cutout.bottom, edgeMargin));
+        float visibleBottom = root.getHeight() - keyboard.bottom;
+        float shift = keyboard.bottom > 0
+                ? Math.max(0, lastTouchY + density * KEYBOARD_FIELD_CLEARANCE_DP - visibleBottom)
+                : 0;
+        view.setTranslationY(-shift);
         return WindowInsets.CONSUMED;
     }
 
