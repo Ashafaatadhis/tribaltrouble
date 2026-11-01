@@ -82,10 +82,24 @@ android {
 
     sourceSets["main"].java.directories.add(portDir.get().asFile.path)
     sourceSets["main"].java.directories.add(buildInfoDir.get().asFile.path)
+    sourceSets["main"].resources.directories.add(File(repoRoot, "tt/src/main/resources").path)
+
+    packaging {
+        resources.excludes += "widget/**"
+    }
+}
+
+// The converted geometry, textures and fonts come from the root build's assets module, which is too heavy to redo on each build.
+val assetsJar = File(repoRoot, "assets/build/libs/assets-1.0.0.jar")
+val buildAssets by tasks.registering(Exec::class) {
+    onlyIf { !assetsJar.exists() }
+    workingDir = repoRoot
+    val wrapper = if (org.gradle.internal.os.OperatingSystem.current().isWindows) "gradlew.bat" else "./gradlew"
+    commandLine(File(repoRoot, wrapper).path, ":assets:jar")
 }
 
 tasks.named("preBuild") {
-    dependsOn(portSources, generateBuildInfo)
+    dependsOn(portSources, generateBuildInfo, buildAssets)
 }
 
 afterEvaluate {
@@ -101,6 +115,7 @@ dependencies {
     implementation("org.joml:joml:1.10.8")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.18.3")
     implementation("com.code-disaster.steamworks4j:steamworks4j:1.10.0")
+    runtimeOnly(files(assetsJar))
 
     // No Android replacement yet for what these provide: audio, stb image and Vorbis decoding, and the last LWJGL core types.
     val lwjglVersion = "3.4.1"

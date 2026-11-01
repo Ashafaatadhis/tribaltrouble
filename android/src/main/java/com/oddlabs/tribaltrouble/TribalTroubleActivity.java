@@ -30,6 +30,7 @@ public final class TribalTroubleActivity extends Activity {
         input = new AndroidInputProvider(window);
         view.setOnTouchListener((_, event) -> input.onTouchEvent(event));
 
+        System.setProperty("user.home", getFilesDir().getAbsolutePath());
         WindowSystems.install(new AndroidWindowSystem(window, input));
         engine = new Thread(this::runEngine, "engine");
         engine.start();
