@@ -4,6 +4,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.opengl.EGL14;
 import android.opengl.EGLConfig;
@@ -40,6 +41,9 @@ public final class AndroidWindow implements Window, SurfaceHolder.Callback {
     private static final float MM_PER_INCH = 25.4f;
     private static final long NO_SURFACE_SLEEP_MS = 50;
     private static final String CLIPBOARD_LABEL = "Tribal Trouble";
+    private static final String PREFERENCES = "tribaltrouble";
+    private static final String TOUCH_DEFAULTS_APPLIED = "touchDefaultsApplied";
+    private static final float TOUCH_UI_SCALE = 1.0f;
 
     private final @NonNull Context context;
     private final @NonNull SurfaceHolder holder;
@@ -126,6 +130,7 @@ public final class AndroidWindow implements Window, SurfaceHolder.Callback {
         }
 
         Settings settings = Settings.getSettings();
+        applyTouchDefaults(settings);
         eglConfig = chooseConfig(settings != null ? settings.view_samples : 0);
 
         int[] contextAttributes = {EGL14.EGL_CONTEXT_CLIENT_VERSION, GL_ES_MAJOR_VERSION, EGL14.EGL_NONE};
@@ -135,6 +140,17 @@ public final class AndroidWindow implements Window, SurfaceHolder.Callback {
             throw new IllegalStateException("OpenGL ES " + GL_ES_MAJOR_VERSION + " is not available: 0x"
                     + Integer.toHexString(EGL14.eglGetError()));
         }
+    }
+
+    /** On the first run, makes the interface as large as it goes, since the desktop default is too small for fingers. */
+    private void applyTouchDefaults(Settings settings) {
+        SharedPreferences preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE);
+        if (settings == null || preferences.getBoolean(TOUCH_DEFAULTS_APPLIED, false)) {
+            return;
+        }
+        settings.ui_scale = TOUCH_UI_SCALE;
+        settings.save();
+        preferences.edit().putBoolean(TOUCH_DEFAULTS_APPLIED, true).apply();
     }
 
     /** Asks for the wanted multisampling and halves it until the device has a matching config. */

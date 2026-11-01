@@ -18,7 +18,7 @@ final class AndroidKeys {
     private static final int GLFW_KEY_0 = 48;
     private static final int GLFW_KEY_SEMICOLON = 59;
     private static final int GLFW_KEY_EQUAL = 61;
-    private static final int GLFW_KEY_A = 65;
+    static final int GLFW_KEY_A = 65;
     private static final int GLFW_KEY_LEFT_BRACKET = 91;
     private static final int GLFW_KEY_BACKSLASH = 92;
     private static final int GLFW_KEY_RIGHT_BRACKET = 93;
@@ -39,7 +39,7 @@ final class AndroidKeys {
     private static final int GLFW_KEY_END = 269;
     private static final int GLFW_KEY_F1 = 290;
     private static final int GLFW_KEY_LEFT_SHIFT = 340;
-    private static final int GLFW_KEY_LEFT_CONTROL = 341;
+    static final int GLFW_KEY_LEFT_CONTROL = 341;
     private static final int GLFW_KEY_LEFT_ALT = 342;
     private static final int GLFW_KEY_RIGHT_SHIFT = 344;
     private static final int GLFW_KEY_RIGHT_CONTROL = 345;
