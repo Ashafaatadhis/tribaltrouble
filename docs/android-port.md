@@ -1,7 +1,54 @@
 # Android port: status and plan
 
-This branch starts an Android port of the client. It is a draft prepared by an AI agent and has
-**not been built with Gradle or run on a device**. Treat it as a head start for a human to review.
+This branch is an Android port of the client. It is a draft prepared by an AI agent. Treat it as a
+head start for a human to review: every change is local and unpushed.
+
+## Current state
+
+The game starts on Android, shows the main menu, starts a single player match, draws the terrain,
+water and units, and takes touch input (select a unit, press an action button, tap a target). It was
+run on an API 36 x86_64 emulator, not on a phone. Nothing here has been played to the end, multiplayer
+has not been tried, and there is no sound.
+
+- **Build.** `./gradlew -p android assembleDebug` with `ANDROID_HOME` set. It is a standalone build in
+  `android/`, not part of the root build. It copies `common` and `tt` into `android/build/port` without
+  the desktop-only classes, so the desktop sources are not changed for it. The assets come from
+  `assets/build/libs/assets-1.0.0.jar`, which the build makes with `./gradlew :assets:jar` when absent.
+- **Run.** Install `android/build/outputs/apk/debug/tribaltrouble-android-debug.apk` and start
+  `TribalTroubleActivity`. Logs go to logcat as `System.err` (`adb logcat | grep System.err`).
+- **Baseline.** OpenGL ES 3.0 and API 35 (Android 15). ES 3.0 because the Android emulator offers no
+  more, and so the path that is tested is the path players get. Android 15 because the shared code uses
+  `List.getFirst`, `getLast`, `removeFirst`, `removeLast` and `CharSequence.isEmpty` (API 35) in about 40
+  places, including simulation code; going lower means editing those. Core library desugaring covers
+  `Path.of` and `Stream.toList`.
+- **How the platform differences are handled.** Shims in `android/src/main/java` stand in for the LWJGL
+  classes the client uses (`org.lwjgl.opengl`, `glfw`, `stb`, `system`, `BufferUtils`) and for
+  `com.oddlabs.tt.Main`, `DeserializationFilter` and `JsonMappers`, each with the same name as the
+  desktop class that the Android copy leaves out. `tt` reaches the window and input through
+  `WindowSystem`.
+- **What the shims change at runtime.** S3TC textures are decoded to RGBA on the CPU (`S3tcDecoder`, 33 to
+  54 dB PSNR against the source PNGs), so they use about four times the memory. Texture buffers are
+  2D textures, particles are drawn as instanced quads instead of through a geometry shader,
+  `glBlendFunci` applies only its first buffer, BGRA and unsized formats are mapped to ES formats, and the
+  texture border colour is ignored.
+- **Touch.** One finger is the left mouse button. Two fingers pinch to zoom and drag to pan the camera.
+  There is no right click, because the game's orders go through the action buttons.
+
+Known gaps, roughly in the order they block play:
+
+1. No sound: `SilentAudioManager` is used because OpenAL is not packaged. The "Sound not available"
+   dialog appears at every start until it is dismissed with "Don't show again".
+2. Not tried on a real device, so frame rate, memory use (S3TC decoding, the 512 MB heap the desktop
+   client assumes) and driver differences are unknown.
+3. No keyboard for text fields (chat, map codes, player names), and no crash reports.
+4. Game data lives in the app's files directory; there is no import of desktop saves.
+5. Pausing the app and returning to it is untested.
+6. Steam is not available, so there is no login, achievements or stats.
+7. Multiplayer, spectating and the matchmaking connection are untested. The deserialization filter has a
+   second implementation on Android (`DeserializationFilter`), checked against the desktop one on 54
+   cases but not on real traffic.
+
+The ES 3.2 requirement below is now only a note: the renderer no longer needs 3.2.
 
 ## What exists on this branch
 
@@ -65,7 +112,7 @@ Functions or features with no direct GLES equivalent, or that need attention:
 | DXT1 / DXT5 textures (`TextureFile`, `EXTTextureCompressionS3TC`) | texture loading | S3TC is not available on every Android GPU. Plan to decode DXT to RGBA on load, or transcode to ETC2 or ASTC at asset build time. |
 | Geometry shader | `ParticleShader` | Core in ES 3.2 only, and slow on some mobile GPUs. A later change could replace it with instancing. |
 
-Target ES 3.2 first. It covers most rows above, and the app can check the version at startup.
+The first plan was to target ES 3.2. The Android build targets ES 3.0 instead; see "Current state".
 
 ## Toolchain
 
