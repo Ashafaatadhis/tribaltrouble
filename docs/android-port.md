@@ -43,8 +43,9 @@ has not been tried, and there is no sound.
 
 Known gaps, roughly in the order they block play:
 
-1. No sound: `SilentAudioManager` is used because OpenAL is not packaged. The "Sound not available"
-   dialog appears at every start until it is dismissed with "Don't show again".
+1. Sound is untested by ear. The game's OpenAL calls are served by a software mixer (`AudioMixer`, one
+   `AudioTrack` at 44.1 kHz) and Ogg Vorbis is decoded with the platform codec. There is no reverb or HRTF.
+   On the emulator the track plays with no underruns, but nobody has listened to the result yet.
 2. Not tried on a real device, so frame rate, memory use (S3TC decoding, the 512 MB heap the desktop
    client assumes) and driver differences are unknown.
 3. No keyboard for text fields (chat, map codes, player names), and no crash reports.
