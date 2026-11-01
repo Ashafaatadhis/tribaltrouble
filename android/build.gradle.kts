@@ -26,12 +26,15 @@ val desktopOnly = listOf(
     "com/oddlabs/tt/input/scripted/**",
 )
 
-// java.io.IO is Java 25 and missing from android.jar; the sources are copied, so the originals stay as they are.
+// java.io.IO (Java 25) and Locale.of (API 36) are missing from the Android SDK; the sources are copied, so the originals stay as they are.
 val portSources by tasks.registering(Sync::class) {
     into(portDir)
     from(File(repoRoot, "common/src/main/java")) { exclude(desktopOnly) }
     from(File(repoRoot, "tt/src/main/java")) { exclude(desktopOnly) }
-    filter { line -> line.replace(Regex("""\bIO\.(print|println)\("""), "System.out.$1(") }
+    filter { line ->
+        line.replace(Regex("""\bIO\.(print|println)\("""), "System.out.$1(").replace(Regex("""\bLocale\.of\("""),
+            "new Locale(")
+    }
 }
 
 val generateBuildInfo by tasks.registering {
@@ -79,6 +82,7 @@ android {
     compileOptions {
         sourceCompatibility = declaredJavaLevel
         targetCompatibility = declaredJavaLevel
+        isCoreLibraryDesugaringEnabled = true
     }
 
     sourceSets["main"].java.directories.add(portDir.get().asFile.path)
@@ -113,6 +117,7 @@ afterEvaluate {
 
 dependencies {
     implementation("org.jspecify:jspecify:1.0.0")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
     implementation("org.joml:joml:1.10.8")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.18.3")
     implementation("com.fasterxml.jackson.module:jackson-module-parameter-names:2.18.3")
