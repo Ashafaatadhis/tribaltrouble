@@ -447,6 +447,19 @@ public final class GUIRoot extends GUIObject {
         return current_gui_object;
     }
 
+    /**
+     * {@return whether the point, in framebuffer pixels from the bottom left, is over the 3D view and no control}
+     * Transparent panels that cover the whole screen, such as the action buttons' container, do not count as controls.
+     */
+    public boolean isOverWorld(int x, int y) {
+        GUIObject picked = pick(x / effective_scale, y / effective_scale);
+        if (picked == null || picked instanceof ModalDelegate) {
+            return false;
+        }
+        return picked instanceof CameraDelegate<?> || picked.getWidth() >= getWidth()
+                && picked.getHeight() >= getHeight();
+    }
+
     @Override
     public void addChild(@NonNull GUIObject child) {
         super.addChild(child);
