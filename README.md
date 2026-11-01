@@ -9,7 +9,12 @@
 
 Tribal Trouble is a realtime strategy game released by Oddlabs in 2004. In 2014 the source was released under GPL2 license.
 
-This fork aims to:
+> **📱 This fork ([Ashafaatadhis/tribaltrouble](https://github.com/Ashafaatadhis/tribaltrouble)) is an Android port.**
+> Its goal is to make Tribal Trouble playable on phones and tablets, with touch controls and an on-screen
+> keyboard. The desktop game (Windows, Linux, macOS) is unchanged and still builds from the same sources.
+> Android is the only mobile platform so far; iOS is not supported. See [Android](#-android) to download and install.
+
+The upstream project aims to:
 
 1. Bring the game back online and make it available for everyone to play as it was originally✅
 2. Ensure it is easy to build and contribute to development of the game 🚧
@@ -21,6 +26,7 @@ See what we're working on right now on the **[current roadmap](https://github.co
 ## Table of Contents
 
 - [🎮 How to play?](#-how-to-play)
+- [📱 Android](#-android)
 - [🛠️ Build Requirements](#️-build-requirements)
 - [🏗️ Building](#️-building)
   - [Repository Setup](#repository-setup)
@@ -55,6 +61,29 @@ Builds from this repo (outside of Steam) are unsigned, so different OSes will re
 Already played before Steam? See [Migrating Your Save to the Steam Version](./docs/migrate-save-to-steam.md) to bring your campaign progress over.
 
 Reporting a bug or trying to reproduce one? See [Event Logs](./docs/event-logs.md) for where the game writes its per-run logs on each platform and how to replay an `event.log` with `--eventload`.
+
+## 📱 Android
+
+**Install:** open the [Releases](https://github.com/Ashafaatadhis/tribaltrouble/releases) page, download
+`tribaltrouble-android.apk` from the latest `android-*` release, open it on your phone and allow installing from
+this source when Android asks. The APK is signed with a debug key, not a store key, so Android and Play Protect may
+warn you; it is not published on Google Play.
+
+**Requirements:** Android 15 (API 35) or newer, a phone with OpenGL ES 3.0 or better, and plenty of free
+RAM (4 GB or more is recommended). The game runs in landscape.
+
+**Controls:** drag with one finger to move the camera, tap to select or click, hold and then drag to box-select,
+pinch with two fingers to zoom, and use the Back button or gesture to open the game menu. Tapping a text field opens
+the on-screen keyboard.
+
+**Status:** this is an early port. It has been played through on one phone (Infinix HOT 60 Pro, Android 16) and on
+the Android emulator: menus, single-player games, touch controls, sound and the keyboard work. Multiplayer is
+untested on Android, memory use is high (over 1 GB in a match), and low-RAM phones may close the game. Please
+[open an issue](https://github.com/Ashafaatadhis/tribaltrouble/issues) with your phone model if something breaks.
+
+**Build it yourself:** with JDK 26 and the Android SDK installed, run `./gradlew -p android assembleDebug`; the APK
+lands in `android/build/outputs/apk/debug/`. How the port works is described in
+[docs/android-port.md](./docs/android-port.md).
 
 ## 🛠️ Build Requirements
 

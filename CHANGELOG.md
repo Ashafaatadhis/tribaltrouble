@@ -14,6 +14,7 @@ section when a release is cut.
 
 ### Added
 
+- Android version (early): play single-player games on a phone with touch controls, sound and an on-screen keyboard. Download the APK from the Releases page.
 - Moderators can rename a profile from Discord and lock it so it cannot be deleted.
 - Players from before the Steam release can ask a moderator on Discord to merge their old account into their Steam account, bringing their old profiles along.
 
