@@ -12,6 +12,7 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.Consumer;
 
 /**
  * Input from an Android view. The UI thread only records raw touches and keys; the engine thread turns the touches
@@ -50,6 +51,8 @@ public final class AndroidInputProvider implements InputProvider<Object> {
 
     private final @NonNull AndroidWindow window;
     private volatile @Nullable GUIRoot guiRoot;
+    private volatile @Nullable Consumer<Boolean> keyboardListener;
+    private boolean keyboardWanted;
 
     private final ConcurrentLinkedQueue<@NonNull RawTouch> rawTouches = new ConcurrentLinkedQueue<>();
 
@@ -117,6 +120,7 @@ public final class AndroidInputProvider implements InputProvider<Object> {
                 downX = touch.x0();
                 downY = touch.y0();
                 downNanos = touch.nanos();
+                updateKeyboard(touch.x0(), touch.y0());
                 if (isOverWorld(touch.x0(), touch.y0())) {
                     mode = Mode.PENDING_WORLD;
                 } else {
@@ -193,6 +197,54 @@ public final class AndroidInputProvider implements InputProvider<Object> {
         pinchRemainder = 0;
         lastCentroidX = (touch.x0() + touch.x1()) / 2;
         lastCentroidY = (touch.y0() + touch.y1()) / 2;
+    }
+
+    /** Asks for the on-screen keyboard when a touch lands on a text field, and for it to go away anywhere else. */
+    private void updateKeyboard(float touchX, float touchY) {
+        GUIRoot root = guiRoot;
+        boolean wanted = root != null && root.isTextFieldAt((int) touchX, window.getHeight() - (int) touchY - 1);
+        if (wanted != keyboardWanted) {
+            keyboardWanted = wanted;
+            Consumer<Boolean> listener = keyboardListener;
+            if (listener != null) {
+                listener.accept(wanted);
+            }
+        }
+    }
+
+    /** Called when the on-screen keyboard is wanted ({@code true}) or no longer wanted. */
+    public void setKeyboardListener(@Nullable Consumer<Boolean> listener) {
+        keyboardListener = listener;
+    }
+
+    /** Types text from the on-screen keyboard; the engine reads each character as typed input. */
+    public void typeText(@NonNull CharSequence text) {
+        synchronized (keyEvents) {
+            for (int i = 0; i < text.length(); i++) {
+                keyEvents.add(new QueuedKey(0, true, false, 0, text.charAt(i)));
+            }
+        }
+    }
+
+    /** Presses and releases one key, given as a GLFW key code. */
+    public void pressKey(int glfwKey) {
+        synchronized (keyEvents) {
+            keyEvents.add(new QueuedKey(glfwKey, true, false, 0, (char) 0));
+            keyEvents.add(new QueuedKey(glfwKey, false, false, 0, (char) 0));
+        }
+    }
+
+    /** The Back button and gesture open the game's menu, as Escape does on a keyboard. */
+    public void pressBack() {
+        pressKey(AndroidKeys.GLFW_KEY_ESCAPE);
+    }
+
+    public void pressBackspace() {
+        pressKey(AndroidKeys.GLFW_KEY_BACKSPACE);
+    }
+
+    public void pressEnter() {
+        pressKey(AndroidKeys.GLFW_KEY_ENTER);
     }
 
     private boolean isOverWorld(float touchX, float touchY) {

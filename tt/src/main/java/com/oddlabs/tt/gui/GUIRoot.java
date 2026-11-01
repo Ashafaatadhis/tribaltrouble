@@ -460,6 +460,11 @@ public final class GUIRoot extends GUIObject {
                 && picked.getHeight() >= getHeight();
     }
 
+    /** {@return whether the point, in framebuffer pixels from the bottom left, is over a text field} */
+    public boolean isTextFieldAt(int x, int y) {
+        return pick(x / effective_scale, y / effective_scale) instanceof TextField;
+    }
+
     @Override
     public void addChild(@NonNull GUIObject child) {
         super.addChild(child);

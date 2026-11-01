@@ -23,10 +23,10 @@ final class AndroidKeys {
     private static final int GLFW_KEY_BACKSLASH = 92;
     private static final int GLFW_KEY_RIGHT_BRACKET = 93;
     private static final int GLFW_KEY_GRAVE_ACCENT = 96;
-    private static final int GLFW_KEY_ESCAPE = 256;
-    private static final int GLFW_KEY_ENTER = 257;
+    static final int GLFW_KEY_ESCAPE = 256;
+    static final int GLFW_KEY_ENTER = 257;
     private static final int GLFW_KEY_TAB = 258;
-    private static final int GLFW_KEY_BACKSPACE = 259;
+    static final int GLFW_KEY_BACKSPACE = 259;
     private static final int GLFW_KEY_INSERT = 260;
     private static final int GLFW_KEY_DELETE = 261;
     static final int GLFW_KEY_RIGHT = 262;
