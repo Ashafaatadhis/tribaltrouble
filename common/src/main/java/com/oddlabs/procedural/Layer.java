@@ -1,10 +1,9 @@
 package com.oddlabs.procedural;
 
+import com.oddlabs.util.PngWriter;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
@@ -150,13 +149,6 @@ public final class Layer {
         return byte_pixel_data;
     }
 
-    private @NonNull BufferedImage convertToImage() {
-        byte[] byte_pixel_data = convertToBytes();
-        BufferedImage image = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_4BYTE_ABGR);
-        image.getRaster().setDataElements(0, 0, getWidth(), getHeight(), byte_pixel_data);
-        return image;
-    }
-
     public void saveAsPNG(String filename) {
         Path file = Path.of(filename + ".png");
         try {
@@ -169,7 +161,7 @@ public final class Layer {
 
     public void saveAsPNG(@NonNull Path file) throws IOException {
         try (OutputStream outputStream = Files.newOutputStream(file)) {
-            ImageIO.write(convertToImage(), "PNG", outputStream);
+            PngWriter.write(outputStream, getWidth(), getHeight(), convertToBytes());
         }
     }
 
