@@ -160,7 +160,7 @@ public class AccessibilityPanel extends Panel {
         Runnable updateColor = () -> {
             int teamIndex = pm_team.getChosenItemIndex();
             float hue = slider_hue.getValue();
-            int rgb = java.awt.Color.HSBtoRGB(hue / 360f, 1.0f, 1.0f);
+            int rgb = Color.hsbToRgb(hue / 360f, 1.0f, 1.0f);
             Vector4f newColor = Color.argb4v((0xFF << 24) | (rgb & 0xFFFFFF));
             Settings.getSettings().team_colours[teamIndex] = newColor;
             colorBox.setColor(newColor);
@@ -173,8 +173,8 @@ public class AccessibilityPanel extends Panel {
         Runnable refreshUI = () -> {
             int index = pm_team.getChosenItemIndex();
             Vector4fc currentColor = Settings.getSettings().team_colours[index];
-            float[] hsb = java.awt.Color.RGBtoHSB((int) (currentColor.x() * 255), (int) (currentColor.y() * 255),
-                    (int) (currentColor.z() * 255), null);
+            float[] hsb = Color.rgbToHsb((int) (currentColor.x() * 255), (int) (currentColor.y() * 255),
+                    (int) (currentColor.z() * 255));
             slider_hue.setValue((int) (hsb[0] * 360));
             colorBox.setColor(currentColor);
         };

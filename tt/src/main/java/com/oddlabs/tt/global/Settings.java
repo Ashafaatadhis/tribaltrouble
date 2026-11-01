@@ -150,7 +150,7 @@ public final class Settings implements Serializable {
         System.arraycopy(handPicked, 0, all, 0, copyCount);
         for (int i = copyCount; i < all.length; i++) {
             float hue = (i - handPicked.length) / (float) (all.length - handPicked.length);
-            int rgb = java.awt.Color.HSBtoRGB(hue, 0.8f, 0.9f);
+            int rgb = Color.hsbToRgb(hue, 0.8f, 0.9f);
             all[i] = Color.argb4v(0xFF000000 | (rgb & 0x00FFFFFF));
         }
         return all;

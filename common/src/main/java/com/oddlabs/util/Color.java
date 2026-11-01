@@ -91,6 +91,91 @@ public final class Color {
     }
 
     /**
+     * Converts hue, saturation and brightness (each 0 to 1, hue wrapping) to an opaque 0xFFRRGGBB integer. Gives the
+     * same result as {@code java.awt.Color.HSBtoRGB}, which Android does not have.
+     */
+    public static int hsbToRgb(float hue, float saturation, float brightness) {
+        int r = 0;
+        int g = 0;
+        int b = 0;
+        if (saturation == 0) {
+            r = g = b = (int) (brightness * NORMALIZE_8_BIT + 0.5f);
+        } else {
+            float h = (hue - (float) Math.floor(hue)) * 6.0f;
+            float f = h - (float) Math.floor(h);
+            float p = brightness * (1.0f - saturation);
+            float q = brightness * (1.0f - saturation * f);
+            float t = brightness * (1.0f - (saturation * (1.0f - f)));
+            switch ((int) h) {
+                case 0 -> {
+                    r = (int) (brightness * NORMALIZE_8_BIT + 0.5f);
+                    g = (int) (t * NORMALIZE_8_BIT + 0.5f);
+                    b = (int) (p * NORMALIZE_8_BIT + 0.5f);
+                }
+                case 1 -> {
+                    r = (int) (q * NORMALIZE_8_BIT + 0.5f);
+                    g = (int) (brightness * NORMALIZE_8_BIT + 0.5f);
+                    b = (int) (p * NORMALIZE_8_BIT + 0.5f);
+                }
+                case 2 -> {
+                    r = (int) (p * NORMALIZE_8_BIT + 0.5f);
+                    g = (int) (brightness * NORMALIZE_8_BIT + 0.5f);
+                    b = (int) (t * NORMALIZE_8_BIT + 0.5f);
+                }
+                case 3 -> {
+                    r = (int) (p * NORMALIZE_8_BIT + 0.5f);
+                    g = (int) (q * NORMALIZE_8_BIT + 0.5f);
+                    b = (int) (brightness * NORMALIZE_8_BIT + 0.5f);
+                }
+                case 4 -> {
+                    r = (int) (t * NORMALIZE_8_BIT + 0.5f);
+                    g = (int) (p * NORMALIZE_8_BIT + 0.5f);
+                    b = (int) (brightness * NORMALIZE_8_BIT + 0.5f);
+                }
+                case 5 -> {
+                    r = (int) (brightness * NORMALIZE_8_BIT + 0.5f);
+                    g = (int) (p * NORMALIZE_8_BIT + 0.5f);
+                    b = (int) (q * NORMALIZE_8_BIT + 0.5f);
+                }
+                default -> {
+                }
+            }
+        }
+        return 0xFF000000 | (r << 16) | (g << 8) | b;
+    }
+
+    /**
+     * Converts 8-bit red, green and blue to {hue, saturation, brightness}, each 0 to 1. Gives the same result as
+     * {@code java.awt.Color.RGBtoHSB}, which Android does not have.
+     */
+    public static float @NonNull [] rgbToHsb(int r, int g, int b) {
+        int max = Math.max(r, Math.max(g, b));
+        int min = Math.min(r, Math.min(g, b));
+        float brightness = ((float) max) / NORMALIZE_8_BIT;
+        float saturation = max != 0 ? ((float) (max - min)) / ((float) max) : 0;
+        float hue;
+        if (saturation == 0) {
+            hue = 0;
+        } else {
+            float redc = ((float) (max - r)) / ((float) (max - min));
+            float greenc = ((float) (max - g)) / ((float) (max - min));
+            float bluec = ((float) (max - b)) / ((float) (max - min));
+            if (r == max) {
+                hue = bluec - greenc;
+            } else if (g == max) {
+                hue = 2.0f + redc - bluec;
+            } else {
+                hue = 4.0f + greenc - redc;
+            }
+            hue = hue / 6.0f;
+            if (hue < 0) {
+                hue = hue + 1.0f;
+            }
+        }
+        return new float[]{hue, saturation, brightness};
+    }
+
+    /**
      * Converts a 32-bit RGBA integer (0xRRGGBBAA) to a {@link Vector4fc}.
      *
      * @param color The 32-bit RGBA integer color.
