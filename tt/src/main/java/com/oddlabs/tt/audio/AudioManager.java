@@ -34,7 +34,7 @@ public abstract class AudioManager implements AudioImplementation, AutoCloseable
             AudioManager instance;
             try {
                 instance = new OpenALManager();
-            } catch (Exception e) {
+            } catch (Exception | LinkageError e) {
                 logger.log(Level.SEVERE, "Failed to create audio manager, running without sound", e);
                 instance = new SilentAudioManager();
             }

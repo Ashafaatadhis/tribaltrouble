@@ -10,7 +10,6 @@ import org.lwjgl.stb.STBVorbis;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.libc.LibCStdlib;
 
-import javax.sound.sampled.UnsupportedAudioFileException;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.ByteBuffer;
@@ -49,7 +48,7 @@ public final class OpenALAudio extends NativeResource<OpenALAudio.Buffers> imple
         try {
             Wave wave = new Wave(file);
             AL10.alBufferData(getBuffer(), wave.getFormat(), wave.getData(), wave.getSampleRate());
-        } catch (UnsupportedAudioFileException e) {
+        } catch (Wave.UnsupportedFormatException e) {
             // Assume it's an ogg vorbis file
             loadOGG(file, getBuffer());
         }

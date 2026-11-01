@@ -3,38 +3,90 @@ package com.oddlabs.tt.audio;
 import org.jspecify.annotations.NonNull;
 import org.lwjgl.openal.AL10;
 
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.UnsupportedAudioFileException;
 import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 public final class Wave {
+    private static final int RIFF_HEADER_BYTES = 12;
+    private static final int CHUNK_HEADER_BYTES = 8;
+    private static final int TAG_BYTES = 4;
+    private static final int FMT_CHUNK_MIN_BYTES = 16;
+    private static final short WAVE_FORMAT_PCM = 1;
 
     private final ByteBuffer data;
     private final int format;
     private final int sample_rate;
 
-    public Wave(@NonNull URL file) throws UnsupportedAudioFileException, IOException {
-        try (AudioInputStream ais = AudioSystem.getAudioInputStream(new BufferedInputStream(file.openStream()))) {
-            AudioFormat audio_format = ais.getFormat();
-            format = getFormat(audio_format.getChannels(), audio_format.getSampleSizeInBits());
+    /** Thrown for anything that is not a PCM WAV file, so callers can try another decoder. */
+    public static final class UnsupportedFormatException extends IOException {
+        UnsupportedFormatException(@NonNull String message) {
+            super(message);
+        }
+    }
 
-            byte[] temp_buffer = new byte[audio_format.getChannels() * (int) ais.getFrameLength() * audio_format.getSampleSizeInBits() / 8];
-            int read = 0;
-            int total = 0;
-            while ((total < temp_buffer.length) && (read = ais.read(temp_buffer, total,
-                    temp_buffer.length - total)) != -1) {
-                total += read;
+    public Wave(@NonNull URL file) throws IOException {
+        try (InputStream in = new BufferedInputStream(file.openStream())) {
+            byte[] riff = in.readNBytes(RIFF_HEADER_BYTES);
+            if (riff.length < RIFF_HEADER_BYTES || !hasTag(riff, 0, "RIFF") || !hasTag(riff, 8, "WAVE")) {
+                throw new UnsupportedFormatException("Not a WAV file: " + file);
             }
 
-            data = directWaveOrder(temp_buffer, audio_format.getSampleSizeInBits());
-            sample_rate = (int) audio_format.getSampleRate();
+            int channels = 0;
+            int bits = 0;
+            int rate = 0;
+            boolean hasFormat = false;
+            byte[] pcm;
+            while (true) {
+                byte[] header = in.readNBytes(CHUNK_HEADER_BYTES);
+                if (header.length < CHUNK_HEADER_BYTES) {
+                    throw new IOException("No data chunk in " + file);
+                }
+                long size = ByteBuffer.wrap(header).order(ByteOrder.LITTLE_ENDIAN).getInt(4) & 0xFFFFFFFFL;
+                if (hasTag(header, 0, "fmt ")) {
+                    ByteBuffer fmt = ByteBuffer.wrap(in.readNBytes((int) size)).order(ByteOrder.LITTLE_ENDIAN);
+                    if (fmt.remaining() < FMT_CHUNK_MIN_BYTES) {
+                        throw new IOException("Truncated fmt chunk in " + file);
+                    }
+                    if (fmt.getShort(0) != WAVE_FORMAT_PCM) {
+                        throw new UnsupportedFormatException("Not PCM audio: " + file);
+                    }
+                    channels = fmt.getShort(2);
+                    rate = fmt.getInt(4);
+                    bits = fmt.getShort(14);
+                    hasFormat = true;
+                    skipPadding(in, size);
+                } else if (hasTag(header, 0, "data")) {
+                    if (!hasFormat) {
+                        throw new IOException("Data chunk before fmt chunk in " + file);
+                    }
+                    pcm = in.readNBytes((int) Math.min(size, Integer.MAX_VALUE));
+                    break;
+                } else {
+                    in.skipNBytes(size + (size & 1));
+                }
+            }
+
+            format = getFormat(channels, bits);
+            int frame_bytes = channels * bits / 8;
+            data = directWaveOrder(Arrays.copyOf(pcm, pcm.length - pcm.length % frame_bytes), bits);
+            sample_rate = rate;
+        }
+    }
+
+    private static boolean hasTag(byte @NonNull [] bytes, int offset, @NonNull String tag) {
+        return new String(bytes, offset, TAG_BYTES, StandardCharsets.US_ASCII).equals(tag);
+    }
+
+    private static void skipPadding(@NonNull InputStream in, long chunk_size) throws IOException {
+        if ((chunk_size & 1) != 0) {
+            in.skipNBytes(1);
         }
     }
 
