@@ -2,6 +2,7 @@ package com.oddlabs.geometry.registry;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.oddlabs.util.JsonMappers;
 import org.jspecify.annotations.NonNull;
 
 import java.io.IOException;
@@ -19,7 +20,7 @@ public record Registry(@NonNull List<AttachmentEntry> attachments, @NonNull List
     public static final String FILE = "registry.json";
     /** The event of an entry that is loaded all year. */
     public static final String NO_EVENT = "-";
-    private static final ObjectMapper MAPPER = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+    private static final ObjectMapper MAPPER = JsonMappers.create().enable(SerializationFeature.INDENT_OUTPUT);
 
     public void write(@NonNull Path file) throws IOException {
         MAPPER.writeValue(file.toFile(), this);

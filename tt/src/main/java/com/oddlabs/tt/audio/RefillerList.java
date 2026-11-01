@@ -84,6 +84,8 @@ public final class RefillerList implements AutoCloseable {
                         // ignore
                     }
                 }
+            } catch (LinkageError _) {
+                // OpenAL is not available, so there is nothing to refill.
             } catch (Throwable t) {
                 Main.fail(t);
             }

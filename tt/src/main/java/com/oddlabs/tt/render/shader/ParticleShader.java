@@ -184,8 +184,59 @@ public final class ParticleShader extends ShaderProgram implements FogShader {
             }
             """;
 
+    /**
+     * The same billboards drawn as four-vertex instances, one per particle, for OpenGL ES, where geometry shaders are
+     * not part of the baseline.
+     */
+    private static final String INSTANCED_VERTEX_SHADER = """
+            #version 410 core
+            """ + GLOBAL_STATE_BLOCK + """
+            layout(location = 0) in vec3 in_CenterPosition;
+            layout(location = 1) in vec3 in_Size;
+            layout(location = 3) in vec4 in_Color;
+            layout(location = 4) in vec4 in_UvCoords1;
+            layout(location = 5) in vec4 in_UvCoords2;
+
+            uniform mat4 u_modelViewMatrix;
+
+            out vec2 v_texCoord;
+            out vec4 v_color;
+            out float v_fogDist;
+
+            void main() {
+                mat4 mv = u_modelViewMatrix;
+                vec3 right = vec3(mv[0][0], mv[1][0], mv[2][0]);
+                vec3 up = vec3(mv[0][1], mv[1][1], mv[2][1]);
+                vec3 r_plus_up = (right + up) * in_Size;
+                vec3 r_minus_up = (right - up) * in_Size;
+
+                vec3 corner;
+                if (gl_VertexID == 0) {
+                    corner = -r_plus_up;
+                    v_texCoord = in_UvCoords1.xy;
+                } else if (gl_VertexID == 1) {
+                    corner = r_minus_up;
+                    v_texCoord = in_UvCoords1.zw;
+                } else if (gl_VertexID == 2) {
+                    corner = -r_minus_up;
+                    v_texCoord = in_UvCoords2.zw;
+                } else {
+                    corner = r_plus_up;
+                    v_texCoord = in_UvCoords2.xy;
+                }
+                v_color = in_Color;
+                v_fogDist = length((mv * vec4(in_CenterPosition, 1.0)).xyz);
+                gl_Position = u_projectionMatrix * (mv * vec4(in_CenterPosition + corner, 1.0));
+            }
+            """;
+
+    /** Whether particles are drawn as instanced quads, as on OpenGL ES, instead of through the geometry shader. */
+    public static boolean isInstanced() {
+        return ShaderDialect.isEsEnabled();
+    }
+
     public ParticleShader() {
-        super(VERTEX_SHADER, FRAGMENT_SHADER, GEOMETRY_SHADER);
+        super(isInstanced() ? INSTANCED_VERTEX_SHADER : VERTEX_SHADER, FRAGMENT_SHADER, isInstanced() ? null : GEOMETRY_SHADER);
         // bindFragDataLocation(0, "out_FragColor");
         link();
     }

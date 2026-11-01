@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.oddlabs.matchmaking.GameMode;
 import com.oddlabs.matchmaking.Preset;
+import com.oddlabs.util.JsonMappers;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -23,7 +24,7 @@ import java.util.logging.Logger;
  */
 public final class PresetLibrary {
     private static final Logger logger = Logger.getLogger(PresetLibrary.class.getName());
-    private static final ObjectMapper MAPPER = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+    private static final ObjectMapper MAPPER = JsonMappers.create().enable(SerializationFeature.INDENT_OUTPUT);
     private static final TypeReference<List<Preset>> PRESET_LIST_TYPE = new TypeReference<>() {
     };
 

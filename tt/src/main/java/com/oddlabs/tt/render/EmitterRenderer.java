@@ -16,6 +16,8 @@ import org.jspecify.annotations.NonNull;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
+import org.lwjgl.opengl.GL31;
+import org.lwjgl.opengl.GL33;
 
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
@@ -27,6 +29,7 @@ import java.util.Queue;
 
 public final class EmitterRenderer implements AutoCloseable {
     private static final int MAX_PARTICLES = 10000;
+    private static final int QUAD_VERTICES = 4;
     private static final VertexLayout<ParticleShader.Attribute> VERTEX_LAYOUT = new VertexLayout<>(
             ParticleShader.Attribute.CENTER_POSITION,
             ParticleShader.Attribute.SIZE,
@@ -62,6 +65,14 @@ public final class EmitterRenderer implements AutoCloseable {
         vao.bind();
         particle_vbo.makeCurrent();
         VERTEX_LAYOUT.bind(shader);
+        if (ParticleShader.isInstanced()) {
+            for (ParticleShader.Attribute attribute : ParticleShader.Attribute.values()) {
+                int location = shader.getAttributeLocation(attribute.getName());
+                if (location >= 0) {
+                    GL33.glVertexAttribDivisor(location, 1);
+                }
+            }
+        }
         vao.unbind();
     }
 
@@ -170,6 +181,14 @@ public final class EmitterRenderer implements AutoCloseable {
     private void flush(int particleCount) {
         if (particleCount == 0) return;
         particle_buffer.flip();
+
+        if (ParticleShader.isInstanced()) {
+            // Without a base instance the attributes cannot start part way into the buffer, so each batch refills it.
+            particle_vbo.orphan();
+            particle_vbo.putSubData(0, particle_buffer);
+            GL31.glDrawArraysInstanced(GL11.GL_TRIANGLE_STRIP, 0, QUAD_VERTICES, particleCount);
+            return;
+        }
 
         if (vbo_offset + particleCount > MAX_PARTICLES) {
             particle_vbo.orphan();

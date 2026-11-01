@@ -35,7 +35,14 @@ final class Icons {
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             factory.setValidating(true);
-            DocumentBuilder builder = factory.newDocumentBuilder();
+            DocumentBuilder builder;
+            try {
+                builder = factory.newDocumentBuilder();
+            } catch (ParserConfigurationException _) {
+                // Android's XML parser cannot validate.
+                factory.setValidating(false);
+                builder = factory.newDocumentBuilder();
+            }
             builder.setErrorHandler(error_handler);
             Document document = builder.parse(url.openStream());
             return document.getDocumentElement();
