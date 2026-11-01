@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 import com.oddlabs.tt.Main;
 import com.oddlabs.tt.input.AndroidInputProvider;
@@ -21,7 +22,8 @@ import com.oddlabs.tt.window.AndroidWindowSystem;
 import com.oddlabs.tt.window.WindowSystems;
 
 public final class TribalTroubleActivity extends Activity {
-    private static final int MIN_EDGE_MARGIN_DP = 24;
+    private static final int MIN_SIDE_MARGIN_DP = 24;
+    private static final int MIN_TOP_BOTTOM_MARGIN_DP = 6;
 
     private AndroidWindow window;
     private AndroidInputProvider input;
@@ -30,6 +32,8 @@ public final class TribalTroubleActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().getAttributes().layoutInDisplayCutoutMode = WindowManager.LayoutParams
+                .LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
         SurfaceView view = new SurfaceView(this);
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
@@ -51,15 +55,18 @@ public final class TribalTroubleActivity extends Activity {
     }
 
     /**
-     * Keeps the game out of the display cutout, the rounded corners and the edge gesture zones, which would otherwise
-     * cover the menu and the action buttons at the screen edges.
+     * Keeps the game out of the display cutout, the rounded corners and the side gesture zones, which would otherwise
+     * cover the menu and the action buttons. The game runs in landscape with the system bars hidden, so the top and
+     * bottom only need a thin margin and use the full height.
      */
     private WindowInsets applySafeArea(View root, WindowInsets insets) {
-        Insets safe = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout()
-                | WindowInsets.Type.systemGestures());
-        int margin = Math.round(getResources().getDisplayMetrics().density * MIN_EDGE_MARGIN_DP);
-        root.setPadding(Math.max(safe.left, margin), Math.max(safe.top, margin), Math.max(safe.right, margin),
-                Math.max(safe.bottom, margin));
+        Insets cutout = insets.getInsets(WindowInsets.Type.displayCutout());
+        Insets gestures = insets.getInsets(WindowInsets.Type.systemGestures());
+        float density = getResources().getDisplayMetrics().density;
+        int sideMargin = Math.round(density * MIN_SIDE_MARGIN_DP);
+        int edgeMargin = Math.round(density * MIN_TOP_BOTTOM_MARGIN_DP);
+        root.setPadding(Math.max(Math.max(cutout.left, gestures.left), sideMargin), Math.max(cutout.top, edgeMargin),
+                Math.max(Math.max(cutout.right, gestures.right), sideMargin), Math.max(cutout.bottom, edgeMargin));
         return WindowInsets.CONSUMED;
     }
 
