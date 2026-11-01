@@ -26,7 +26,7 @@ public final class TribalTroubleActivity extends Activity {
         setContentView(view);
 
         DisplayMetrics metrics = getResources().getDisplayMetrics();
-        window = new AndroidWindow(view.getHolder(), metrics, getDisplay().getRefreshRate());
+        window = new AndroidWindow(this, view.getHolder(), metrics, getDisplay().getRefreshRate());
         input = new AndroidInputProvider(window);
         view.setOnTouchListener((_, event) -> input.onTouchEvent(event));
 

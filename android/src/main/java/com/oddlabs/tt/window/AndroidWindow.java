@@ -1,5 +1,10 @@
 package com.oddlabs.tt.window;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.opengl.EGL14;
 import android.opengl.EGLConfig;
 import android.opengl.EGLContext;
@@ -11,6 +16,7 @@ import android.view.SurfaceHolder;
 import com.oddlabs.tt.global.Settings;
 import com.oddlabs.tt.render.SerializableDisplayMode;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.opengl.GL;
 
 import java.nio.file.Path;
@@ -29,7 +35,9 @@ public final class AndroidWindow implements Window, SurfaceHolder.Callback {
     private static final int DISPLAY_BITS_PER_PIXEL = 32;
     private static final float MM_PER_INCH = 25.4f;
     private static final long NO_SURFACE_SLEEP_MS = 50;
+    private static final String CLIPBOARD_LABEL = "Tribal Trouble";
 
+    private final @NonNull Context context;
     private final @NonNull SurfaceHolder holder;
     private final @NonNull DisplayMetrics metrics;
     private final int refreshRate;
@@ -48,7 +56,9 @@ public final class AndroidWindow implements Window, SurfaceHolder.Callback {
     private EGLConfig eglConfig;
     private EGLSurface eglSurface = EGL14.EGL_NO_SURFACE;
 
-    public AndroidWindow(@NonNull SurfaceHolder holder, @NonNull DisplayMetrics metrics, float refreshRate) {
+    public AndroidWindow(@NonNull Context context, @NonNull SurfaceHolder holder, @NonNull DisplayMetrics metrics,
+            float refreshRate) {
+        this.context = context;
         this.holder = holder;
         this.metrics = metrics;
         this.refreshRate = Math.round(refreshRate);
@@ -323,5 +333,25 @@ public final class AndroidWindow implements Window, SurfaceHolder.Callback {
     @Override
     public float[] getWindowContentScale() {
         return getMonitorContentScale();
+    }
+
+    @Override
+    public @Nullable String getClipboardText() {
+        ClipData clip = context.getSystemService(ClipboardManager.class).getPrimaryClip();
+        if (clip == null || clip.getItemCount() == 0) {
+            return null;
+        }
+        CharSequence text = clip.getItemAt(0).coerceToText(context);
+        return text != null ? text.toString() : null;
+    }
+
+    @Override
+    public void setClipboardText(@NonNull String text) {
+        context.getSystemService(ClipboardManager.class).setPrimaryClip(ClipData.newPlainText(CLIPBOARD_LABEL, text));
+    }
+
+    @Override
+    public void openUrl(@NonNull String url) {
+        context.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
     }
 }

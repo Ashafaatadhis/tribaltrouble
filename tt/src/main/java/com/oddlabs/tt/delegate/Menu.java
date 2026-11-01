@@ -38,9 +38,7 @@ import org.joml.Vector4fc;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-import java.awt.Desktop;
 import java.net.InetAddress;
-import java.net.URI;
 import java.util.ResourceBundle;
 
 public abstract class Menu extends CameraDelegate<Camera> {
@@ -115,7 +113,7 @@ public abstract class Menu extends CameraDelegate<Camera> {
 
     private static void openURL(@NonNull String url) {
         try {
-            Desktop.getDesktop().browse(new URI(url));
+            Renderer.getRenderer().getWindow().openUrl(url);
         } catch (Exception e) {
             System.err.println("Failed to open URL: " + e.getMessage());
         }

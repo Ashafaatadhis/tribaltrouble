@@ -14,16 +14,13 @@ import com.oddlabs.tt.input.Key;
 import com.oddlabs.tt.input.InputEvent;
 import com.oddlabs.tt.input.InputPhase;
 import com.oddlabs.tt.render.GUIRenderer;
+import com.oddlabs.tt.render.Renderer;
 import com.oddlabs.tt.resource.Resources;
 import com.oddlabs.util.Color;
 import org.joml.Vector4f;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-import java.awt.Toolkit;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.StringSelection;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
@@ -498,8 +495,7 @@ public class EditLine extends TextField implements Clipped {
             String selectedText = getContents().substring(
                     Math.min(selectionStart, selectionEnd),
                     Math.max(selectionStart, selectionEnd));
-            Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-            clipboard.setContents(new StringSelection(selectedText), null);
+            Renderer.getRenderer().getWindow().setClipboardText(selectedText);
         } catch (Exception e) {
             System.err.println("Error accessing clipboard: " + e.getMessage());
         }
@@ -527,8 +523,7 @@ public class EditLine extends TextField implements Clipped {
     private static @Nullable String readClipboard() {
         if (LocalEventQueue.getQueue().getDeterministic().isPlayback()) return null;
         try {
-            Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-            return (String) clipboard.getData(DataFlavor.stringFlavor);
+            return Renderer.getRenderer().getWindow().getClipboardText();
         } catch (Exception e) {
             System.err.println("Error accessing clipboard: " + e.getMessage());
             return null;

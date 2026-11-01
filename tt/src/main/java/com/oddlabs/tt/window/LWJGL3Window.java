@@ -4,6 +4,7 @@ import com.oddlabs.tt.global.Settings;
 import com.oddlabs.tt.render.SerializableDisplayMode;
 import com.oddlabs.tt.util.OsPlatform;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.glfw.Callbacks;
 import org.lwjgl.glfw.GLFWErrorCallback;
@@ -14,6 +15,12 @@ import org.lwjgl.stb.STBImage;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 
+import java.awt.Desktop;
+import java.awt.Toolkit;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.StringSelection;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
@@ -590,5 +597,22 @@ public final class LWJGL3Window implements Window {
             glfwGetWindowContentScale(windowHandle, x, y);
             return new float[]{x.get(0), y.get(0)};
         }
+    }
+
+    @Override
+    public @Nullable String getClipboardText() throws Exception {
+        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        return (String) clipboard.getData(DataFlavor.stringFlavor);
+    }
+
+    @Override
+    public void setClipboardText(@NonNull String text) {
+        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        clipboard.setContents(new StringSelection(text), null);
+    }
+
+    @Override
+    public void openUrl(@NonNull String url) throws Exception {
+        Desktop.getDesktop().browse(new URI(url));
     }
 }

@@ -2,6 +2,7 @@ package com.oddlabs.tt.window;
 
 import com.oddlabs.tt.render.SerializableDisplayMode;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 public interface Window extends AutoCloseable {
     void create(@NonNull SerializableDisplayMode mode, boolean fullscreen);
@@ -105,4 +106,27 @@ public interface Window extends AutoCloseable {
      * @return float array [xScale, yScale]
      */
     float[] getWindowContentScale();
+
+    /**
+     * Returns the text on the system clipboard.
+     *
+     * @return the text, or null if the clipboard holds none
+     * @throws Exception if the clipboard cannot be read
+     */
+    @Nullable
+    String getClipboardText() throws Exception;
+
+    /**
+     * Replaces the contents of the system clipboard with the given text.
+     *
+     * @throws Exception if the clipboard cannot be written
+     */
+    void setClipboardText(@NonNull String text) throws Exception;
+
+    /**
+     * Opens the URL in the system browser.
+     *
+     * @throws Exception if the URL is invalid or no browser can be started
+     */
+    void openUrl(@NonNull String url) throws Exception;
 }
