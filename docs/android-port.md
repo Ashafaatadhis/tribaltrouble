@@ -31,8 +31,15 @@ has not been tried, and there is no sound.
   2D textures, particles are drawn as instanced quads instead of through a geometry shader,
   `glBlendFunci` applies only its first buffer, BGRA and unsized formats are mapped to ES formats, and the
   texture border colour is ignored.
-- **Touch.** One finger is the left mouse button. Two fingers pinch to zoom and drag to pan the camera.
-  There is no right click, because the game's orders go through the action buttons.
+- **Touch.** The engine thread turns raw touches into mouse and key events, so it can ask the GUI what is
+  under a finger (`GUIRoot.isOverWorld`). On a control (button, slider, dialog) one finger is the left
+  mouse button. On the 3D view one finger drags the camera, a tap is a click, and holding still for 0.4 s
+  before moving starts a selection box. Two fingers pinch to zoom and drag to pan; three fingers toggle the
+  status display (frame rate). There is no right click, because the game's orders go through the action
+  buttons. Panning holds an arrow key, so its speed is the camera's own, not proportional to the drag.
+- **Screen.** The game stays inside the display cutout, the system bars and the edge gesture zones, with at
+  least 24 dp on every side. On the first run the interface scale is set to its maximum, because the
+  desktop default is too small for fingers.
 
 Known gaps, roughly in the order they block play:
 
