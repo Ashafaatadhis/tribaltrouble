@@ -76,7 +76,8 @@ warn you; it is not published on Google Play.
 **Requirements:** Android 15 (API 35) or newer, a phone with OpenGL ES 3.0 or better, and plenty of free
 RAM (4 GB or more is recommended). The game runs in landscape.
 
-**Controls:** drag with one finger to move the camera, tap to select or click, hold and then drag to box-select,
+**Controls:** drag with one finger to move the camera, tap to select or click, double-tap a unit to select every unit of the same kind, double-tap and then drag to
+box-select,
 pinch with two fingers to zoom, and use the Back button or gesture to open the game menu. Tapping a text field opens
 the on-screen keyboard.
 

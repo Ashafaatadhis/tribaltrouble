@@ -33,8 +33,9 @@ has not been tried, and there is no sound.
   texture border colour is ignored.
 - **Touch.** The engine thread turns raw touches into mouse and key events, so it can ask the GUI what is
   under a finger (`GUIRoot.isOverWorld`). On a control (button, slider, dialog) one finger is the left
-  mouse button. On the 3D view one finger drags the camera, a tap is a click, and holding still for 0.4 s
-  before moving starts a selection box. Two fingers pinch to zoom and drag to pan; three fingers toggle the
+  mouse button. On the 3D view one finger drags the camera, a tap is a click, a double tap is a
+  double click (select every unit of that kind), and a double tap whose second touch drags draws a selection
+  box. Two fingers pinch to zoom and drag to pan; three fingers toggle the
   status display (frame rate). There is no right click, because the game's orders go through the action
   buttons. Panning holds an arrow key, so its speed is the camera's own, not proportional to the drag.
 - **Screen.** The game stays inside the display cutout, the system bars and the edge gesture zones, with at

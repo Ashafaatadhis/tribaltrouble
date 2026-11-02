@@ -20,8 +20,8 @@ import java.util.function.Consumer;
  *
  * <ul>
  * <li>On a control (button, slider, dialog) one finger is the left mouse button.
- * <li>On the 3D view one finger drags the camera, a tap is a click, and holding still before moving starts a
- * selection box.
+ * <li>On the 3D view one finger drags the camera and a tap is a click. A second tap close to the first is a double
+ * click, which selects every unit of the tapped kind, and if that second touch drags it draws a selection box.
  * <li>Two fingers pinch to zoom and drag to pan; three fingers toggle the status display.
  * </ul>
  */
@@ -33,11 +33,13 @@ public final class AndroidInputProvider implements InputProvider<Object> {
     private static final float PAN_START_PIXELS = 3f;
     private static final float TAP_SLOP_PIXELS = 40f;
     private static final long PAN_IDLE_NANOS = 150_000_000L;
-    private static final long LONG_PRESS_NANOS = 400_000_000L;
+    private static final long DOUBLE_TAP_NANOS = 350_000_000L;
+    private static final float DOUBLE_TAP_SLOP_PIXELS = 80f;
+    private static final long NO_TAP = 0L;
     private static final int STATUS_FINGERS = 3;
 
     private enum Mode {
-        IDLE, PENDING_WORLD, PANNING, SELECTING, CONTROL_DRAG, MULTI_TOUCH
+        IDLE, PENDING_WORLD, PENDING_DOUBLE, PANNING, SELECTING, CONTROL_DRAG, MULTI_TOUCH
     }
 
     private record RawTouch(int action, int pointerCount, float x0, float y0, float x1, float y1, long nanos) {
@@ -71,7 +73,9 @@ public final class AndroidInputProvider implements InputProvider<Object> {
     private Mode mode = Mode.IDLE;
     private float downX;
     private float downY;
-    private long downNanos;
+    private long lastTapNanos = NO_TAP;
+    private float lastTapX;
+    private float lastTapY;
     private float lastX;
     private float lastY;
     private float lastPinchDistance;
@@ -105,13 +109,7 @@ public final class AndroidInputProvider implements InputProvider<Object> {
         while ((touch = rawTouches.poll()) != null) {
             process(touch);
         }
-        long now = System.nanoTime();
-        if (mode == Mode.PENDING_WORLD && now - downNanos >= LONG_PRESS_NANOS) {
-            mode = Mode.SELECTING;
-            moveTo(downX, downY);
-            setLeft(true);
-        }
-        releasePanKeysWhenIdle(now);
+        releasePanKeysWhenIdle(System.nanoTime());
     }
 
     private void process(@NonNull RawTouch touch) {
@@ -119,10 +117,11 @@ public final class AndroidInputProvider implements InputProvider<Object> {
             case MotionEvent.ACTION_DOWN -> {
                 downX = touch.x0();
                 downY = touch.y0();
-                downNanos = touch.nanos();
                 updateKeyboard(touch.x0(), touch.y0());
                 if (isOverWorld(touch.x0(), touch.y0())) {
-                    mode = Mode.PENDING_WORLD;
+                    boolean secondTap = lastTapNanos != NO_TAP && touch.nanos() - lastTapNanos <= DOUBLE_TAP_NANOS
+                            && Math.hypot(touch.x0() - lastTapX, touch.y0() - lastTapY) <= DOUBLE_TAP_SLOP_PIXELS;
+                    mode = secondTap ? Mode.PENDING_DOUBLE : Mode.PENDING_WORLD;
                 } else {
                     mode = Mode.CONTROL_DRAG;
                     moveTo(touch.x0(), touch.y0());
@@ -140,6 +139,17 @@ public final class AndroidInputProvider implements InputProvider<Object> {
                             moveTo(downX, downY);
                             setLeft(true);
                             setLeft(false);
+                            lastTapNanos = touch.nanos();
+                            lastTapX = downX;
+                            lastTapY = downY;
+                        }
+                    }
+                    case PENDING_DOUBLE -> {
+                        if (up) {
+                            // The game counts a double click only when both clicks land on the very same pixel.
+                            moveTo(lastTapX, lastTapY);
+                            setLeft(true);
+                            setLeft(false);
                         }
                     }
                     case SELECTING, CONTROL_DRAG -> {
@@ -148,6 +158,9 @@ public final class AndroidInputProvider implements InputProvider<Object> {
                     }
                     default -> {
                     }
+                }
+                if (mode != Mode.PENDING_WORLD || !up) {
+                    lastTapNanos = NO_TAP;
                 }
                 setPanKeys(0, 0);
                 mode = Mode.IDLE;
@@ -172,6 +185,14 @@ public final class AndroidInputProvider implements InputProvider<Object> {
                     mode = Mode.PANNING;
                     lastX = touch.x0();
                     lastY = touch.y0();
+                }
+            }
+            case PENDING_DOUBLE -> {
+                if (Math.hypot(touch.x0() - downX, touch.y0() - downY) > TAP_SLOP_PIXELS) {
+                    mode = Mode.SELECTING;
+                    moveTo(downX, downY);
+                    setLeft(true);
+                    moveTo(touch.x0(), touch.y0());
                 }
             }
             case PANNING -> {
